@@ -1,9 +1,3 @@
-// ─── RippleScreen ─────────────────────────────────────────────────────────────
-// This is the game-specific screen. Replace with your own game canvas.
-//
-// It uses GameLayout for all the shared chrome (keypad, levels, audio, social).
-// Your job: fill the game canvas area with your game's visuals and logic.
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import GameLayout from "../components/GameLayout";
 import TutorialHint from "../components/TutorialHint";
@@ -12,18 +6,11 @@ import {
   playCorrect,
   playLevelComplete,
   playRipple,
-  playWrong,
   shuffleMusic,
   startMusic,
   toggleMute,
 } from "../sound";
-import {
-  type Level,
-  type RoundConfig,
-  getRainbowColor,
-  makeRound,
-  ripplePitch,
-} from "../game/rippleGame";
+import { getRainbowColor, ripplePitch } from "../game/rippleGame";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,33 +21,29 @@ interface Ripple {
   color: string;
 }
 
-type Phase = "tapping" | "entering";
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const EGGS_PER_LEVEL = 5;
+const TAPS_PER_EGG = 10;
+const EGGS_TOTAL = 5;
 const RIPPLE_DURATION_MS = 900;
+
+// Ripple colours cycle through this palette
+const RIPPLE_COLORS = ["#67e8f9", "#a78bfa", "#fbbf24", "#34d399", "#f472b6", "#fb923c"];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function RippleScreen() {
-  const [level, setLevel] = useState<Level>(1);
-  const [unlockedLevel, setUnlockedLevel] = useState<Level>(1);
+  const [tapCount, setTapCount] = useState(0);          // taps this egg
+  const [totalTaps, setTotalTaps] = useState(0);        // taps all time
   const [eggsCollected, setEggsCollected] = useState(0);
-  const [round, setRound] = useState<RoundConfig>(() => makeRound(1));
-  const [roundIndex, setRoundIndex] = useState(0);
-  const [phase, setPhase] = useState<Phase>("tapping");
-  const [tapCount, setTapCount] = useState(0);
   const [ripples, setRipples] = useState<Ripple[]>([]);
-  const [input, setInput] = useState("");
-  const [shake, setShake] = useState(false);
   const [muted, setMuted] = useState(isMuted());
   const [showTutorial, setShowTutorial] = useState(true);
+  const [colorIndex, setColorIndex] = useState(0);
   const rippleIdRef = useRef(0);
   const canvasRef = useRef<HTMLDivElement>(null);
-
-  // Start music on first interaction
   const musicStartedRef = useRef(false);
+
   function ensureMusic() {
     if (!musicStartedRef.current) {
       musicStartedRef.current = true;
@@ -68,35 +51,23 @@ export default function RippleScreen() {
     }
   }
 
-  function beginNewRound(lvl: Level) {
-    const newRound = makeRound(lvl);
-    setLevel(lvl);
-    setRound(newRound);
-    setRoundIndex((i) => i + 1);
-    setPhase("tapping");
+  function handleRestart() {
     setTapCount(0);
+    setTotalTaps(0);
+    setEggsCollected(0);
     setRipples([]);
-    setInput("");
-    setShake(false);
-  }
-
-  function handleLevelSelect(lvl: number) {
-    beginNewRound(lvl as Level);
-  }
-
-  function handleToggleMute() {
-    const nowMuted = toggleMute();
-    setMuted(nowMuted);
-  }
-
-  function handleShuffleMusic() {
+    setColorIndex(0);
+    setShowTutorial(true);
     ensureMusic();
     shuffleMusic();
   }
 
+  function handleToggleMute() {
+    setMuted(toggleMute());
+  }
+
   const handleCanvasTap = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (phase !== "tapping") return;
       ensureMusic();
       setShowTutorial(false);
 
@@ -104,137 +75,104 @@ export default function RippleScreen() {
       if (!rect) return;
       const normX = (e.clientX - rect.left) / rect.width;
       const normY = (e.clientY - rect.top) / rect.height;
-      const xPct = normX * 100;
-      const yPct = normY * 100;
 
-      const color =
-        round.level === 3
-          ? getRainbowColor(tapCount)
-          : round.rippleColor;
+      // Cycle colour per tap
+      const color = getRainbowColor(totalTaps) ?? RIPPLE_COLORS[colorIndex % RIPPLE_COLORS.length];
 
-      // Play sound
+      // Sound pitched by position
       playRipple(ripplePitch(normX, normY));
 
-      // Add ripple
+      // Spawn ripple
       const id = ++rippleIdRef.current;
-      setRipples((prev) => [...prev, { id, x: xPct, y: yPct, color }]);
+      setRipples((prev) => [...prev, { id, x: normX * 100, y: normY * 100, color }]);
       setTimeout(() => {
         setRipples((prev) => prev.filter((r) => r.id !== id));
       }, RIPPLE_DURATION_MS + 100);
 
-      const newCount = tapCount + 1;
-      setTapCount(newCount);
+      // Increment counts
+      const newTap = tapCount + 1;
+      const newTotal = totalTaps + 1;
+      setTapCount(newTap);
+      setTotalTaps(newTotal);
+      setColorIndex((i) => i + 1);
 
-      // When target reached, move to entry phase
-      if (newCount === round.target) {
-        setTimeout(() => setPhase("entering"), 400);
+      // Egg collected every TAPS_PER_EGG taps
+      if (newTap >= TAPS_PER_EGG) {
+        setTapCount(0);
+        const newEggs = eggsCollected + 1;
+
+        if (newEggs >= EGGS_TOTAL) {
+          // All eggs collected — celebrate and reset
+          playLevelComplete();
+          setEggsCollected(0);
+        } else {
+          playCorrect();
+          setEggsCollected(newEggs);
+        }
       }
     },
-    [phase, round, tapCount],
+    [tapCount, totalTaps, eggsCollected, colorIndex],
   );
 
-  function handleSubmit() {
-    const entered = parseInt(input, 10);
-    if (isNaN(entered)) return;
-
-    if (entered === round.target) {
-      // Correct!
-      playCorrect();
-      const newEggs = eggsCollected + 1;
-      setEggsCollected(newEggs);
-
-      if (newEggs >= EGGS_PER_LEVEL) {
-        // Level complete
-        playLevelComplete();
-        setEggsCollected(0);
-        const nextLevel = Math.min(level + 1, 3) as Level;
-        if (level < 3) setUnlockedLevel(nextLevel as Level);
-        setTimeout(() => beginNewRound(level), 800);
-      } else {
-        setTimeout(() => beginNewRound(level), 600);
-      }
-    } else {
-      // Wrong
-      playWrong();
-      setShake(true);
-      setInput("");
-      setTimeout(() => setShake(false), 500);
-    }
-  }
-
-  // Question box content
-  const question =
-    phase === "tapping" ? (
-      <span>
-        {round.tapPrompt}{" "}
-        {tapCount > 0 && (
-          <span style={{ color: round.rippleColor, fontWeight: 900 }}>
-            ({tapCount})
-          </span>
-        )}
-      </span>
-    ) : (
-      <span>{round.entryPrompt}</span>
-    );
-
-  // Prevent scroll/zoom while playing
+  // Prevent scroll/zoom on touch
   useEffect(() => {
     const prevent = (e: Event) => e.preventDefault();
     document.addEventListener("touchmove", prevent, { passive: false });
     return () => document.removeEventListener("touchmove", prevent);
   }, []);
 
+  // Progress within current egg (0–TAPS_PER_EGG mapped to dots)
+  const currentColor = RIPPLE_COLORS[colorIndex % RIPPLE_COLORS.length];
+
   return (
     <GameLayout
-      levelCount={3}
-      currentLevel={level}
-      unlockedLevel={unlockedLevel}
-      onLevelSelect={handleLevelSelect}
       muted={muted}
       onToggleMute={handleToggleMute}
-      onShuffleMusic={handleShuffleMusic}
-      keypadValue={input}
-      onKeypadChange={setInput}
-      onKeypadSubmit={handleSubmit}
-      canSubmit={phase === "entering" && input.length > 0}
-      showKeypadHint={phase === "entering" && input === ""}
-      keypadRoundKey={roundIndex}
-      question={question}
-      questionShake={shake}
+      onRestart={handleRestart}
+      keypadValue={tapCount.toString()}
+      keypadDisplayOnly
       progress={eggsCollected}
-      progressTotal={EGGS_PER_LEVEL}
+      progressTotal={EGGS_TOTAL}
     >
-      {/* ── Game canvas ────────────────────────────────────────────────── */}
+      {/* ── Game canvas ──────────────────────────────────────────────────── */}
       <div
         ref={canvasRef}
         className="absolute inset-0 cursor-crosshair select-none"
         style={{ touchAction: "none" }}
         onPointerDown={handleCanvasTap}
       >
-        {/* Background: subtle dot grid */}
-        <div className="absolute inset-0 opacity-20"
+        {/* Subtle dot-grid background */}
+        <div
+          className="absolute inset-0 opacity-20"
           style={{
             backgroundImage: "radial-gradient(circle, #334155 1px, transparent 1px)",
             backgroundSize: "28px 28px",
           }}
         />
 
-        {/* Target counter — centre of canvas */}
-        <div
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 pointer-events-none"
-        >
+        {/* Tap counter — centre */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 pointer-events-none">
           <div
-            className="text-6xl font-black tabular-nums"
+            className="text-7xl font-black tabular-nums transition-colors duration-150"
             style={{
-              color: phase === "entering" ? "#4ade80" : round.rippleColor,
-              textShadow: `0 0 32px ${round.rippleColor}80`,
-              transition: "color 0.3s",
+              color: currentColor,
+              textShadow: `0 0 40px ${currentColor}80`,
             }}
           >
             {tapCount}
           </div>
-          <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
-            {phase === "tapping" ? `/ ${round.target}` : "done!"}
+          {/* Mini progress bar for current egg */}
+          <div className="flex gap-1">
+            {Array.from({ length: TAPS_PER_EGG }, (_, i) => (
+              <div
+                key={i}
+                className="w-2 h-2 rounded-full transition-all duration-150"
+                style={{
+                  background: i < tapCount ? currentColor : "rgba(71,85,105,0.5)",
+                  boxShadow: i < tapCount ? `0 0 5px ${currentColor}` : undefined,
+                }}
+              />
+            ))}
           </div>
         </div>
 
@@ -243,11 +181,7 @@ export default function RippleScreen() {
           <div
             key={r.id}
             className="absolute pointer-events-none"
-            style={{
-              left: `${r.x}%`,
-              top: `${r.y}%`,
-              transform: "translate(-50%, -50%)",
-            }}
+            style={{ left: `${r.x}%`, top: `${r.y}%`, transform: "translate(-50%, -50%)" }}
           >
             {[0, 1, 2].map((ring) => (
               <div
@@ -276,24 +210,9 @@ export default function RippleScreen() {
           </div>
         ))}
 
-        {/* Phase transition overlay */}
-        {phase === "entering" && (
-          <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ background: "rgba(2,6,23,0.3)" }}
-          >
-            <div
-              className="text-2xl font-black uppercase tracking-widest animate-bounce-in"
-              style={{ color: "#4ade80", textShadow: "0 0 24px rgba(74,222,128,0.7)" }}
-            >
-              Enter your count →
-            </div>
-          </div>
-        )}
-
         {/* Tutorial hint */}
         <TutorialHint
-          show={showTutorial && tapCount === 0}
+          show={showTutorial}
           label="Tap anywhere!"
         />
       </div>
