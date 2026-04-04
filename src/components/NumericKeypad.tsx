@@ -43,7 +43,7 @@ export default function NumericKeypad({
     if (key === "⌫") { onChange(value.slice(0, -1)); return; }
     if (key === "±") {
       if (value.startsWith("-")) onChange(value.slice(1));
-      else if (value !== "" && value !== "0") onChange("-" + value);
+      else onChange("-" + (value || "0"));
       return;
     }
     if (key === ".") { if (!value.includes(".")) onChange(value === "" ? "0." : `${value}.`); return; }

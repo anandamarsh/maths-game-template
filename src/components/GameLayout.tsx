@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { useIsCoarsePointer, useIsMobileLandscape } from "../hooks/useMediaQuery";
 import { SocialComments, SocialShare, openCommentsComposer } from "./Social";
 import AudioButton from "./AudioButton";
 import NumericKeypad from "./NumericKeypad";
@@ -43,7 +44,10 @@ export default function GameLayout({
   progressTotal,
   children,
 }: GameLayoutProps) {
-  const [calcMinimized, setCalcMinimized] = useState(false);
+  const isMobileLandscape = useIsMobileLandscape();
+  const isCoarsePointer = useIsCoarsePointer();
+  // Minimized by default on touch devices; expanded by default on desktop
+  const [calcMinimized, setCalcMinimized] = useState(() => isMobileLandscape || isCoarsePointer);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareDrawerOpen, setShareDrawerOpen] = useState(false);
 
@@ -113,16 +117,17 @@ export default function GameLayout({
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <div className="flex flex-row items-center gap-2 px-2 py-2 shrink-0">
-        {/* Left: all controls */}
+        {/* Left: all controls — first slot reserved for shell home button (injected at absolute top-2 left-2) */}
         <div className="flex items-center gap-1.5">
+          <div className="w-10 h-10 shrink-0" aria-hidden="true" />
           <AudioButton muted={muted} onToggle={onToggleMute} />
 
           {onRestart && (
             <button onClick={onRestart} title="Restart"
               className="arcade-button w-10 h-10 flex items-center justify-center p-2">
               <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-                <path d="M1 4v6h6" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M3.51 15a9 9 0 1 0 .49-3.98L1 10" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                <polyline points="23 4 23 10 17 10" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M20.49 15a9 9 0 1 1-.18-5.16" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           )}

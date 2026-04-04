@@ -108,28 +108,24 @@ export default function RippleScreen() {
         style={{ touchAction: "none" }}
         onPointerDown={handleCanvasTap}
       >
-        {/* Starry background */}
+        {/* Deep-space gradient background */}
         <div className="absolute inset-0" style={{
-          background: "radial-gradient(ellipse at 50% 0%, #0f2a4a 0%, #020617 60%)",
+          background: "radial-gradient(ellipse at top, #1e3a5f 0%, #080e1c 72%)",
         }} />
-        {/* Star field */}
-        <div className="absolute inset-0 opacity-70" style={{
-          backgroundImage: [
-            "radial-gradient(circle, #e0f2fe 1px, transparent 1px)",
-            "radial-gradient(circle, #bae6fd 1px, transparent 1px)",
-            "radial-gradient(circle, #f0f9ff 1.5px, transparent 1.5px)",
-          ].join(", "),
-          backgroundSize: "97px 89px, 61px 73px, 149px 131px",
-          backgroundPosition: "13px 7px, 41px 33px, 79px 61px",
-        }} />
-        {/* Subtle nebula glow */}
-        <div className="absolute inset-0 opacity-15" style={{
-          backgroundImage: [
-            "radial-gradient(ellipse 40% 30% at 20% 40%, #38bdf8 0%, transparent 70%)",
-            "radial-gradient(ellipse 35% 25% at 80% 70%, #818cf8 0%, transparent 70%)",
-            "radial-gradient(ellipse 30% 20% at 60% 20%, #34d399 0%, transparent 70%)",
-          ].join(", "),
-        }} />
+        {/* Arcade grid overlay */}
+        <div className="absolute inset-0 arcade-grid opacity-20 pointer-events-none" />
+        {/* Individual star dots */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.55 }}>
+          {[
+            [8,12],[22,38],[37,7],[55,28],[70,14],[85,41],[95,6],
+            [12,55],[28,72],[44,60],[60,80],[76,65],[90,78],
+            [5,88],[18,95],[32,85],[48,92],[64,88],[80,96],
+            [15,30],[42,44],[68,35],[88,22],[3,68],[52,18],
+            [74,52],[38,96],[92,48],[25,18],[61,46],
+          ].map(([x, y], i) => (
+            <circle key={i} cx={`${x}%`} cy={`${y}%`} r={i % 3 === 0 ? 1.5 : 1} fill="white" />
+          ))}
+        </svg>
 
         {/* Ripple animations */}
         {ripples.map((r) => (
