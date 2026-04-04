@@ -130,7 +130,7 @@ export default function RippleScreen() {
       onToggleMute={handleToggleMute}
       onRestart={handleRestart}
       keypadValue={tapCount.toString()}
-      keypadDisplayOnly
+      question="Tap the screen!"
       progress={eggsCollected}
       progressTotal={EGGS_TOTAL}
     >
