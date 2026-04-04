@@ -1,0 +1,33 @@
+{
+  "id": "maths-game-template",
+  "name": "Ripple Touch",
+  "short_name": "Ripple",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "landscape",
+  "background_color": "#0d1b35",
+  "theme_color": "#0d1b35",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "tags": ["counting", "touch", "ripple", "template"],
+  "subjects": ["maths"],
+  "skills": ["counting", "number recognition"],
+  "githubUrl": "https://github.com/anandamarsh/maths-game-template",
+  "description": "Build: __BUILD_STAMP__\n\nRipple Touch is a template game for the Interactive Maths platform.\n\nWHAT IT DOES:\nTap the screen to create ripple effects and sounds. Count the ripples and enter the count using the numeric keypad. Progress through 3 levels of increasing challenge.\n\nWHAT IT TEACHES:\n- Level 1: counting to 5\n- Level 2: counting to 8\n- Level 3: counting to 12\n\nTECH: React, TypeScript, Vite, Tailwind CSS, Web Audio API."
+}
