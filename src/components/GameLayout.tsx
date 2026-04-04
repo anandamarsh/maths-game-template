@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useIsCoarsePointer, useIsMobileLandscape } from "../hooks/useMediaQuery";
 import { SocialComments, SocialShare, openCommentsComposer } from "./Social";
 import AudioButton from "./AudioButton";
+import LevelButtons from "./LevelButtons";
 import NumericKeypad from "./NumericKeypad";
 import QuestionBox from "./QuestionBox";
 
@@ -26,6 +27,12 @@ interface GameLayoutProps {
   progress?: number;
   progressTotal?: number;
 
+  // Level buttons (optional)
+  levelCount?: number;
+  currentLevel?: number;
+  unlockedLevel?: number;
+  onLevelSelect?: (level: number) => void;
+
   // Game canvas
   children: ReactNode;
 }
@@ -42,6 +49,10 @@ export default function GameLayout({
   questionShake = false,
   progress,
   progressTotal,
+  levelCount,
+  currentLevel,
+  unlockedLevel,
+  onLevelSelect,
   children,
 }: GameLayoutProps) {
   const isMobileLandscape = useIsMobileLandscape();
@@ -165,6 +176,18 @@ export default function GameLayout({
                   transform: filled ? "scale(1.15)" : "scale(1)",
                 }} />
             ))}
+          </div>
+        )}
+
+        {/* Right: level buttons */}
+        {levelCount !== undefined && currentLevel !== undefined && unlockedLevel !== undefined && onLevelSelect && (
+          <div className="ml-auto">
+            <LevelButtons
+              levelCount={levelCount}
+              currentLevel={currentLevel}
+              unlockedLevel={unlockedLevel}
+              onSelect={onLevelSelect}
+            />
           </div>
         )}
       </div>

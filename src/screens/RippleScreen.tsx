@@ -14,6 +14,7 @@ interface Ripple {
 const RIPPLE_DURATION_MS = 900;
 const TAPS_PER_EGG = 5;   // every 5 taps earns one egg
 const EGGS_TOTAL = 10;     // 10 eggs to collect
+const LEVEL_COUNT = 3;
 
 export default function RippleScreen() {
   const [ripples, setRipples] = useState<Ripple[]>([]);
@@ -23,6 +24,8 @@ export default function RippleScreen() {
   const [tapTotal, setTapTotal] = useState(0);
   const [, setTapsThisEgg] = useState(0);
   const [eggsCollected, setEggsCollected] = useState(0);
+  const [level, setLevel] = useState(1);
+  const [unlockedLevel, setUnlockedLevel] = useState(1);
   const rippleIdRef = useRef(0);
   const canvasRef = useRef<HTMLDivElement>(null);
   const musicStartedRef = useRef(false);
@@ -39,8 +42,19 @@ export default function RippleScreen() {
     setTapTotal(0);
     setTapsThisEgg(0);
     setEggsCollected(0);
+    setLevel(1);
+    setUnlockedLevel(1);
     setShowTutorial(true);
     shuffleMusic();
+  }
+
+  function handleLevelSelect(lv: number) {
+    setLevel(lv);
+    setRipples([]);
+    setTapTotal(0);
+    setTapsThisEgg(0);
+    setEggsCollected(0);
+    setShowTutorial(true);
   }
 
   function handleToggleMute() {
@@ -73,8 +87,12 @@ export default function RippleScreen() {
         const next = t + 1;
         if (next >= TAPS_PER_EGG) {
           setEggsCollected((eggs) => {
+            const newEggs = Math.min(eggs + 1, EGGS_TOTAL);
             if (eggs < EGGS_TOTAL) playLevelComplete();
-            return Math.min(eggs + 1, EGGS_TOTAL);
+            if (newEggs >= EGGS_TOTAL) {
+              setUnlockedLevel((u) => Math.min(u + 1, LEVEL_COUNT));
+            }
+            return newEggs;
           });
           return 0;
         }
@@ -100,6 +118,10 @@ export default function RippleScreen() {
       question="Tap the screen!"
       progress={eggsCollected}
       progressTotal={EGGS_TOTAL}
+      levelCount={LEVEL_COUNT}
+      currentLevel={level}
+      unlockedLevel={unlockedLevel}
+      onLevelSelect={handleLevelSelect}
     >
       {/* ── Game canvas ──────────────────────────────────────────────────── */}
       <div
