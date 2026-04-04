@@ -47,7 +47,9 @@ export default function NumericKeypad({
       return;
     }
     if (key === ".") { if (!value.includes(".")) onChange(value === "" ? "0." : `${value}.`); return; }
-    onChange(value === "0" ? key : `${value}${key}`);
+    if (value === "0") onChange(key);
+    else if (value === "-0") onChange("-" + key);
+    else onChange(`${value}${key}`);
   }
 
   const display = value === "" ? "0" : value;

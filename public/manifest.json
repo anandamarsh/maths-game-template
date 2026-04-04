@@ -29,5 +29,5 @@
   "subjects": ["maths"],
   "skills": ["counting", "number recognition"],
   "githubUrl": "https://github.com/anandamarsh/maths-game-template",
-  "description": "Build: __BUILD_STAMP__\n\nRipple Touch is a template game for the Interactive Maths platform.\n\nWHAT IT DOES:\nTap the screen to create ripple effects and sounds. Count the ripples and enter the count using the numeric keypad. Progress through 3 levels of increasing challenge.\n\nWHAT IT TEACHES:\n- Level 1: counting to 5\n- Level 2: counting to 8\n- Level 3: counting to 12\n\nTECH: React, TypeScript, Vite, Tailwind CSS, Web Audio API."
+  "description": "Build: __BUILD_STAMP__\n\nRipple Touch is a template game for the Interactive Maths platform.\n\nWHAT IT DOES:\nTap anywhere on the screen to create colourful ripple effects with sound. Collect 10 eggs by tapping — every 5 taps earns one egg.\n\nWHAT IT TEACHES:\nFree-play sensory exploration; serves as a starter template for third-party Interactive Maths games.\n\nTECH: React, TypeScript, Vite, Tailwind CSS, Web Audio API."
 }
