@@ -1,5 +1,11 @@
 // src/report/sessionLog.ts
 
+export interface RipplePosition {
+  x: number;  // 0-100 (% from left)
+  y: number;  // 0-100 (% from top)
+  color: string;
+}
+
 export interface QuestionAttempt {
   questionNumber: number;
   prompt: string;
@@ -10,6 +16,7 @@ export interface QuestionAttempt {
   timestamp: number;
   timeTakenMs: number;
   gamePhase: "normal" | "monster";
+  ripplePositions: RipplePosition[];  // positions of ripples for this round
 }
 
 export interface SessionSummary {

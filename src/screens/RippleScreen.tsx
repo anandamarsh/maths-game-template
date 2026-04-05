@@ -5,7 +5,7 @@ import TutorialHint from "../components/TutorialHint";
 import { isMuted, playCorrect, playLevelComplete, playRipple, playWrong, shuffleMusic, startMusic, toggleMute } from "../sound";
 import { getRainbowColor, makeRound, ripplePitch } from "../game/rippleGame";
 import { startSession, startQuestionTimer, logAttempt, buildSummary } from "../report/sessionLog";
-import type { SessionSummary } from "../report/sessionLog";
+import type { SessionSummary, RipplePosition } from "../report/sessionLog";
 
 interface Ripple {
   id: number;
@@ -15,7 +15,7 @@ interface Ripple {
 }
 
 const RIPPLE_DURATION_MS = 900;
-const EGGS_TOTAL = 10;
+const EGGS_PER_ROUND = 3;     // 3 taps per round, each tap = 1 egg
 const LEVEL_COUNT = 3;
 
 type GamePhase = "tapping" | "answering" | "feedback" | "levelComplete";
@@ -30,14 +30,15 @@ export default function RippleScreen() {
 
   // Game state
   const [phase, setPhase] = useState<GamePhase>("tapping");
-  const [roundPhase, setRoundPhase] = useState<"normal" | "monster">("normal");
   const [tapCount, setTapCount] = useState(0);
   const [targetTaps, setTargetTaps] = useState(0);
   const [eggsCollected, setEggsCollected] = useState(0);
-  const [monsterEggs, setMonsterEggs] = useState(0);
   const [questionShake, setQuestionShake] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
+
+  // Track ripple positions for current round (for the report diagram)
+  const roundRipplesRef = useRef<RipplePosition[]>([]);
 
   const rippleIdRef = useRef(0);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -51,7 +52,6 @@ export default function RippleScreen() {
     }
   }
 
-  // Start a new round of tapping
   function startNewRound(lv: 1 | 2 | 3) {
     const round = makeRound(lv);
     roundRef.current = round;
@@ -60,6 +60,7 @@ export default function RippleScreen() {
     setCalcValue("");
     setRipples([]);
     setPhase("tapping");
+    roundRipplesRef.current = [];
     startQuestionTimer();
   }
 
@@ -68,8 +69,6 @@ export default function RippleScreen() {
     setLevel(1);
     setUnlockedLevel(1);
     setEggsCollected(0);
-    setMonsterEggs(0);
-    setRoundPhase("normal");
     setShowTutorial(true);
     setSessionSummary(null);
     setFeedbackMsg("");
@@ -83,8 +82,6 @@ export default function RippleScreen() {
     setLevel(l);
     setRipples([]);
     setEggsCollected(0);
-    setMonsterEggs(0);
-    setRoundPhase("normal");
     setShowTutorial(true);
     setSessionSummary(null);
     setFeedbackMsg("");
@@ -119,6 +116,13 @@ export default function RippleScreen() {
       const color = getRainbowColor(tapCount);
       playRipple(ripplePitch(normX, normY));
 
+      // Track position for report diagram
+      roundRipplesRef.current.push({
+        x: Math.round(normX * 100),
+        y: Math.round(normY * 100),
+        color,
+      });
+
       const id = ++rippleIdRef.current;
       setRipples((prev) => [...prev, { id, x: normX * 100, y: normY * 100, color }]);
       setTimeout(() => {
@@ -128,18 +132,25 @@ export default function RippleScreen() {
       const newCount = tapCount + 1;
       setTapCount(newCount);
 
+      // Each tap = 1 egg
+      setEggsCollected((eggs) => {
+        const newEggs = Math.min(eggs + 1, EGGS_PER_ROUND);
+        if (eggs < EGGS_PER_ROUND) playLevelComplete();
+        return newEggs;
+      });
+
       if (newCount >= targetTaps) {
         // Tapping phase done, move to answering
         setTimeout(() => {
           setPhase("answering");
           setCalcValue("");
-        }, 400);
+        }, 500);
       }
     },
     [phase, tapCount, targetTaps],
   );
 
-  function handleKeypadSubmit() {
+  const handleKeypadSubmit = useCallback(() => {
     if (phase !== "answering") return;
     const answer = parseInt(calcValue, 10);
     if (isNaN(answer)) return;
@@ -147,81 +158,90 @@ export default function RippleScreen() {
     const correct = targetTaps;
     const isCorrect = answer === correct;
 
-    // Log the attempt
+    // Log the attempt with ripple positions
     logAttempt({
       prompt: roundRef.current.entryPrompt,
       level,
       correctAnswer: correct,
       childAnswer: answer,
       isCorrect,
-      gamePhase: roundPhase,
+      gamePhase: "normal",
+      ripplePositions: [...roundRipplesRef.current],
     });
 
     if (isCorrect) {
       playCorrect();
-      if (roundPhase === "normal") {
-        const newEggs = eggsCollected + 1;
-        setEggsCollected(newEggs);
-        if (newEggs >= EGGS_TOTAL) {
-          // Normal round complete - switch to monster round
-          setFeedbackMsg("Normal round cleared! Monster Round begins!");
-          setPhase("feedback");
-          setTimeout(() => {
-            setRoundPhase("monster");
-            setMonsterEggs(0);
-            setFeedbackMsg("");
-            startNewRound(level);
-          }, 1800);
-          return;
-        }
-      } else {
-        // Monster round
-        const newMonsterEggs = monsterEggs + 1;
-        setMonsterEggs(newMonsterEggs);
-        if (newMonsterEggs >= EGGS_TOTAL) {
-          // Level complete!
-          playLevelComplete();
-          setUnlockedLevel((u) => Math.min(u + 1, LEVEL_COUNT));
-          const summary = buildSummary({
-            playerName: "Explorer",
-            level,
-            normalEggs: EGGS_TOTAL,
-            monsterEggs: EGGS_TOTAL,
-            levelCompleted: true,
-            monsterRoundCompleted: true,
-          });
-          setSessionSummary(summary);
-          setPhase("levelComplete");
-          return;
-        }
-      }
       setFeedbackMsg("Correct!");
     } else {
       playWrong();
       setQuestionShake(true);
       setTimeout(() => setQuestionShake(false), 400);
-
-      if (roundPhase === "monster") {
-        const newMonsterEggs = Math.max(monsterEggs - 1, 0);
-        setMonsterEggs(newMonsterEggs);
-      }
       setFeedbackMsg(`Wrong! It was ${correct}`);
     }
 
     setPhase("feedback");
     setTimeout(() => {
       setFeedbackMsg("");
-      startNewRound(level);
+      // After EGGS_PER_ROUND eggs, show report
+      if (eggsCollected >= EGGS_PER_ROUND) {
+        playLevelComplete();
+        setUnlockedLevel((u) => Math.min(u + 1, LEVEL_COUNT));
+        const summary = buildSummary({
+          playerName: "Explorer",
+          level,
+          normalEggs: EGGS_PER_ROUND,
+          monsterEggs: 0,
+          levelCompleted: true,
+          monsterRoundCompleted: false,
+        });
+        setSessionSummary(summary);
+        setPhase("levelComplete");
+      } else {
+        startNewRound(level);
+      }
     }, 1200);
-  }
+  }, [phase, calcValue, targetTaps, level, eggsCollected]);
+
+  // Physical keyboard support
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (phase !== "answering") return;
+
+      // Ignore if focus is on a real input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+      if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        setCalcValue((v) => {
+          if (v === "0") return e.key;
+          return v + e.key;
+        });
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        setCalcValue((v) => v.slice(0, -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleKeypadSubmit();
+      } else if (e.key === ".") {
+        e.preventDefault();
+        setCalcValue((v) => {
+          if (v.includes(".")) return v;
+          return v === "" ? "0." : v + ".";
+        });
+      } else if (e.key === "-") {
+        e.preventDefault();
+        setCalcValue((v) => v.startsWith("-") ? v.slice(1) : "-" + (v || "0"));
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [phase, handleKeypadSubmit]);
 
   function handleReportClose() {
     setSessionSummary(null);
     setPhase("tapping");
-    // Reset for next level or replay
     setEggsCollected(0);
-    setMonsterEggs(0);
-    setRoundPhase("normal");
     startSession();
     startNewRound(level);
   }
@@ -235,11 +255,7 @@ export default function RippleScreen() {
   // Build question text
   let questionText: string;
   if (phase === "tapping") {
-    if (roundPhase === "monster") {
-      questionText = `MONSTER ROUND - Tap the screen! (${tapCount}/${targetTaps})`;
-    } else {
-      questionText = `Tap the screen! (${tapCount}/${targetTaps})`;
-    }
+    questionText = `Tap the screen! (${tapCount}/${targetTaps})`;
   } else if (phase === "answering") {
     questionText = roundRef.current.entryPrompt;
   } else if (phase === "feedback") {
@@ -247,9 +263,6 @@ export default function RippleScreen() {
   } else {
     questionText = "Level Complete!";
   }
-
-  // Progress dots: normal round = eggsCollected, monster round = monsterEggs
-  const progress = roundPhase === "monster" ? monsterEggs : eggsCollected;
 
   return (
     <GameLayout
@@ -262,8 +275,8 @@ export default function RippleScreen() {
       canSubmit={phase === "answering" && calcValue.length > 0}
       question={questionText}
       questionShake={questionShake}
-      progress={progress}
-      progressTotal={EGGS_TOTAL}
+      progress={eggsCollected}
+      progressTotal={EGGS_PER_ROUND}
       levelCount={LEVEL_COUNT}
       currentLevel={level}
       unlockedLevel={unlockedLevel}
@@ -294,13 +307,6 @@ export default function RippleScreen() {
             <circle key={i} cx={`${x}%`} cy={`${y}%`} r={i % 3 === 0 ? 1.5 : 1} fill="white" />
           ))}
         </svg>
-
-        {/* Monster round overlay tint */}
-        {roundPhase === "monster" && (
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: "radial-gradient(ellipse at center, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.15) 100%)",
-          }} />
-        )}
 
         {/* Ripple animations */}
         {ripples.map((r) => (

@@ -1,7 +1,7 @@
 // src/report/generatePdf.ts
 
 import { jsPDF } from "jspdf";
-import type { SessionSummary } from "./sessionLog";
+import type { SessionSummary, QuestionAttempt } from "./sessionLog";
 
 // --- Color palette ---
 
@@ -95,6 +95,63 @@ function drawStar(doc: jsPDF, cx: number, cy: number, outerR: number, innerR: nu
   doc.lines(lines, verts[0][0], verts[0][1], [1, 1], "F", true);
 }
 
+// --- Ripple position diagram ---
+
+function drawRippleDiagram(
+  doc: jsPDF,
+  attempt: QuestionAttempt,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  // Dark background to mimic the game canvas
+  doc.setFillColor("#0f172a");
+  doc.roundedRect(x, y, width, height, 3, 3, "F");
+  doc.setDrawColor("#334155");
+  doc.setLineWidth(0.3);
+  doc.roundedRect(x, y, width, height, 3, 3, "S");
+
+  // Draw subtle grid
+  doc.setDrawColor("#1e293b");
+  doc.setLineWidth(0.15);
+  const gridStep = 8;
+  for (let gx = x + gridStep; gx < x + width; gx += gridStep) {
+    doc.line(gx, y, gx, y + height);
+  }
+  for (let gy = y + gridStep; gy < y + height; gy += gridStep) {
+    doc.line(x, gy, x + width, gy);
+  }
+
+  // Draw each ripple as concentric circles
+  const padding = 2;
+  for (const rp of attempt.ripplePositions) {
+    const px = x + padding + (rp.x / 100) * (width - padding * 2);
+    const py = y + padding + (rp.y / 100) * (height - padding * 2);
+
+    // Outer rings
+    doc.setDrawColor(rp.color);
+    doc.setLineWidth(0.4);
+    doc.circle(px, py, 4, "S");
+    doc.setLineWidth(0.25);
+    doc.circle(px, py, 6, "S");
+
+    // Center dot
+    doc.setFillColor(rp.color);
+    doc.circle(px, py, 1.2, "F");
+
+    // Coordinate label
+    doc.setFontSize(4.5);
+    doc.setTextColor(rp.color);
+    doc.text(`(${rp.x},${rp.y})`, px, py + 8.5, { align: "center" });
+  }
+
+  // "Ripple count" label
+  doc.setFontSize(5);
+  doc.setTextColor("#94a3b8");
+  doc.text(`${attempt.ripplePositions.length} ripple${attempt.ripplePositions.length !== 1 ? "s" : ""}`, x + width / 2, y + height - 2, { align: "center" });
+}
+
 // --- Main PDF generation ---
 
 export async function generateSessionPdf(summary: SessionSummary): Promise<Blob> {
@@ -172,28 +229,6 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.text(
     "Count ripples on screen and enter the correct number on the keypad.",
     margin + doc.getTextWidth("Objective:") + 2, curY
-  );
-  curY += 4.8;
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(COLORS.textDark);
-  doc.text("Basic Round:", margin, curY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(COLORS.textMuted);
-  doc.text(
-    "Earn 10 eggs by counting ripples correctly. Every 5 taps earns one egg.",
-    margin + doc.getTextWidth("Basic Round:") + 2, curY
-  );
-  curY += 4.8;
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(COLORS.textDark);
-  doc.text("Monster Round:", margin, curY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(COLORS.textMuted);
-  doc.text(
-    "Defend all 10 eggs against harder questions. Wrong answers lose an egg.",
-    margin + doc.getTextWidth("Monster Round:") + 2, curY
   );
   curY += 8;
 
@@ -273,12 +308,9 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
       if (!attempt.isCorrect) {
         doc.setFillColor("#ef4444");
         doc.setDrawColor("#dc2626");
-      } else if (attempt.gamePhase === "monster") {
+      } else {
         doc.setFillColor("#facc15");
         doc.setDrawColor("#f59e0b");
-      } else {
-        doc.setFillColor("#e2e8f0");
-        doc.setDrawColor("#94a3b8");
       }
       doc.ellipse(eggX, eggCY, eggRx, eggRy, "FD");
       eggX += eggStep;
@@ -289,7 +321,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   curY += 5;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // QUESTION CARDS
+  // QUESTION CARDS with ripple diagrams
   // ═══════════════════════════════════════════════════════════════════════════
 
   const cardHeaderH = 10;
@@ -299,8 +331,11 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   const cardRight = margin + contentW;
   const cardContentW = cardRight - cardLeft;
 
+  const diagramW = 70;
+  const diagramH = 42;
+
   for (const attempt of summary.attempts) {
-    const cardBodyH = 22;
+    const cardBodyH = diagramH + 8;
     const estimatedCardH = cardHeaderH + cardBodyH;
 
     curY += cardGap;
@@ -317,7 +352,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
     doc.setFillColor(cardBg);
     doc.rect(cardLeft, curY, cardContentW, cardHeaderH, "F");
 
-    // Left color stripe
+    // Left color stripe (full card height)
     const stripeH = cardHeaderH + cardBodyH;
     doc.setFillColor(cardBorderColor);
     doc.rect(cardLeft, curY, stripeW, stripeH, "F");
@@ -328,16 +363,6 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
     doc.setFont("helvetica", "bold");
     doc.setTextColor(COLORS.textDark);
     doc.text(qLabel, cardLeft + stripeW + 3, curY + 6.8);
-
-    // MONSTER badge
-    if (attempt.gamePhase === "monster") {
-      const badgeX = cardLeft + stripeW + 3 + doc.getTextWidth(qLabel) + 2;
-      doc.setFillColor("#fef08a");
-      doc.roundedRect(badgeX, curY + 2, 16, 5, 1.5, 1.5, "F");
-      doc.setFontSize(5.5);
-      doc.setTextColor("#92400e");
-      doc.text("MONSTER", badgeX + 8, curY + 5.7, { align: "center" });
-    }
 
     // CORRECT / WRONG + time
     const timeStr = formatDuration(attempt.timeTakenMs);
@@ -363,18 +388,24 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
 
     curY += cardHeaderH;
 
-    // Card body - question and answer
+    // Card body: diagram (left) + question text (right)
     const bodyPad = 4;
-    const textX = cardLeft + stripeW + 4;
-    const textW = cardContentW - stripeW - 8;
+    const diagramX = cardLeft + stripeW + 4;
+
+    // Draw the ripple position diagram
+    drawRippleDiagram(doc, attempt, diagramX, curY + bodyPad, diagramW, diagramH);
+
+    // Question and answer text (right of diagram)
+    const textX = diagramX + diagramW + 5;
+    const textW = cardRight - textX - 4;
 
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(COLORS.textDark);
     const promptLines = doc.splitTextToSize(attempt.prompt, textW);
-    doc.text(promptLines, textX, curY + bodyPad);
+    doc.text(promptLines, textX, curY + bodyPad + 4);
 
-    let textY = curY + bodyPad + promptLines.length * 4.5 + 1;
+    let textY = curY + bodyPad + 4 + promptLines.length * 4.5 + 3;
 
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
