@@ -246,6 +246,16 @@ export default function RippleScreen() {
     startNewRound(level);
   }
 
+  function handleNextLevel() {
+    const next = Math.min(level + 1, LEVEL_COUNT) as 1 | 2 | 3;
+    setLevel(next);
+    setSessionSummary(null);
+    setPhase("tapping");
+    setEggsCollected(0);
+    startSession();
+    startNewRound(next);
+  }
+
   useEffect(() => {
     const prevent = (e: Event) => e.preventDefault();
     document.addEventListener("touchmove", prevent, { passive: false });
@@ -337,7 +347,12 @@ export default function RippleScreen() {
 
       {/* Session report modal */}
       {sessionSummary && (
-        <SessionReportModal summary={sessionSummary} onClose={handleReportClose} />
+        <SessionReportModal
+          summary={sessionSummary}
+          level={level}
+          onClose={handleReportClose}
+          onNextLevel={level < LEVEL_COUNT ? handleNextLevel : undefined}
+        />
       )}
     </GameLayout>
   );
