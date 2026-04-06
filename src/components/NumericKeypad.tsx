@@ -109,6 +109,7 @@ export default function NumericKeypad({
             {row.map((btn) => (
               <button
                 key={btn} type="button" onClick={() => press(btn)}
+                data-autopilot-key={btn}
                 className={/[0-9]/.test(btn) ? digit : op}
                 style={activeKey === btn ? pressedKeyStyle : undefined}
               >
@@ -121,8 +122,9 @@ export default function NumericKeypad({
           </div>
         ))}
         <div className="flex gap-0.5 mt-0.5">
-          <button type="button" onClick={() => press("0")} className={`${digit} flex-[2]`} style={activeKey === "0" ? pressedKeyStyle : undefined}>0</button>
+          <button type="button" onClick={() => press("0")} data-autopilot-key="0" className={`${digit} flex-[2]`} style={activeKey === "0" ? pressedKeyStyle : undefined}>0</button>
           <button type="button" onClick={onSubmit} disabled={!canSubmit}
+            data-autopilot-key="submit"
             className={`${base} flex-[2] arcade-button disabled:opacity-40 disabled:cursor-not-allowed`}>
             <svg viewBox="0 0 24 24" fill="none"
               className={isMobileLandscape ? "w-[1.6875rem] h-[1.6875rem]" : "w-8 h-8 md:w-7 md:h-7"}

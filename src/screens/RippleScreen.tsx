@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import GameLayout from "../components/GameLayout";
+import PhantomHand from "../components/PhantomHand";
 import SessionReportModal from "../components/SessionReportModal";
 import TutorialHint from "../components/TutorialHint";
 import { isMuted, playCorrect, playLevelComplete, playRipple, playWrong, shuffleMusic, startMusic, toggleMute } from "../sound";
 import { getRainbowColor, makeRound, ripplePitch } from "../game/rippleGame";
 import { startSession, startQuestionTimer, logAttempt, buildSummary } from "../report/sessionLog";
+import { emailReport } from "../report/shareReport";
 import type { SessionSummary, RipplePosition } from "../report/sessionLog";
+import { useCheatCodes } from "../hooks/useCheatCode";
+import { useAutopilot } from "../hooks/useAutopilot";
+import type { AutopilotCallbacks } from "../hooks/useAutopilot";
 
 interface Ripple {
   id: number;
@@ -16,8 +21,9 @@ interface Ripple {
 }
 
 const RIPPLE_DURATION_MS = 900;
-const EGGS_PER_ROUND = 3;     // 3 taps per round, each tap = 1 egg
+const EGGS_PER_ROUND = 3;
 const LEVEL_COUNT = 2;
+const AUTOPILOT_EMAIL = "amarsh.anand@gmail.com";
 const IS_LOCALHOST_DEV = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
 type GamePhase = "tapping" | "answering" | "feedback" | "levelComplete";
@@ -46,6 +52,10 @@ export default function RippleScreen() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const musicStartedRef = useRef(false);
   const roundRef = useRef(makeRound(1));
+
+  // Always-current refs for cheat code and autopilot callbacks
+  const targetTapsRef = useRef(targetTaps);
+  targetTapsRef.current = targetTaps;
 
   function ensureMusic() {
     if (!musicStartedRef.current) {
@@ -102,23 +112,18 @@ export default function RippleScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCanvasTap = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
+  // ── Core tap logic (called by both real pointer events and autopilot) ────
+
+  const doTap = useCallback(
+    (normX: number, normY: number) => {
       if (phase !== "tapping") return;
 
       ensureMusic();
       setShowTutorial(false);
 
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-
-      const normX = (e.clientX - rect.left) / rect.width;
-      const normY = (e.clientY - rect.top) / rect.height;
-
       const color = getRainbowColor(tapCount);
       playRipple(ripplePitch(normX, normY));
 
-      // Track position for report diagram
       roundRipplesRef.current.push({
         x: Math.round(normX * 100),
         y: Math.round(normY * 100),
@@ -134,7 +139,6 @@ export default function RippleScreen() {
       const newCount = tapCount + 1;
       setTapCount(newCount);
 
-      // Each tap = 1 egg
       setEggsCollected((eggs) => {
         const newEggs = Math.min(eggs + 1, EGGS_PER_ROUND);
         if (eggs < EGGS_PER_ROUND) playLevelComplete();
@@ -142,7 +146,6 @@ export default function RippleScreen() {
       });
 
       if (newCount >= targetTaps) {
-        // Tapping phase done, move to answering
         setTimeout(() => {
           setPhase("answering");
           setCalcValue("");
@@ -152,15 +155,29 @@ export default function RippleScreen() {
     [phase, tapCount, targetTaps],
   );
 
-  const handleKeypadSubmit = useCallback(() => {
+  const handleCanvasTap = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (phase !== "tapping") return;
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const normX = (e.clientX - rect.left) / rect.width;
+      const normY = (e.clientY - rect.top) / rect.height;
+      doTap(normX, normY);
+    },
+    [phase, doTap],
+  );
+
+  // ── Answer submission (accepts optional override for cheat code / autopilot) ──
+
+  const handleKeypadSubmit = useCallback((overrideValue?: string) => {
     if (phase !== "answering") return;
-    const answer = parseInt(calcValue, 10);
+    const raw = overrideValue ?? calcValue;
+    const answer = parseInt(raw, 10);
     if (isNaN(answer)) return;
 
     const correct = targetTaps;
     const isCorrect = answer === correct;
 
-    // Log the attempt with ripple positions
     logAttempt({
       prompt: roundRef.current.entryPrompt,
       level,
@@ -184,7 +201,6 @@ export default function RippleScreen() {
     setPhase("feedback");
     setTimeout(() => {
       setFeedbackMsg("");
-      // After EGGS_PER_ROUND eggs, show report
       if (eggsCollected >= EGGS_PER_ROUND) {
         playLevelComplete();
         setUnlockedLevel((u) => Math.min(u + 1, LEVEL_COUNT));
@@ -204,12 +220,14 @@ export default function RippleScreen() {
     }, 1200);
   }, [phase, calcValue, targetTaps, level, eggsCollected]);
 
+  // Ref so cheat code callback always has the latest submit function
+  const handleKeypadSubmitRef = useRef(handleKeypadSubmit);
+  handleKeypadSubmitRef.current = handleKeypadSubmit;
+
   // Physical keyboard support
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (phase !== "answering") return;
-
-      // Ignore if focus is on a real input/textarea
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
 
@@ -233,12 +251,53 @@ export default function RippleScreen() {
         });
       } else if (e.key === "-") {
         e.preventDefault();
-        setCalcValue((v) => v.startsWith("-") ? v.slice(1) : "-" + (v || "0"));
+        setCalcValue((v) => (v.startsWith("-") ? v.slice(1) : "-" + (v || "0")));
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [phase, handleKeypadSubmit]);
+
+  // ── Autopilot setup ──────────────────────────────────────────────────────
+
+  const autopilotCallbacksRef = useRef<AutopilotCallbacks | null>(null);
+  // Always-current callbacks for autopilot
+  autopilotCallbacksRef.current = {
+    simulateTap: doTap,
+    setCalcValue,
+    submitAnswer: (ov) => handleKeypadSubmitRef.current(ov),
+    goNextLevel: handleNextLevel,
+    playAgain: handleReportClose,
+    restartAll: handleRestart,
+    sendEmail: (summary, email) => emailReport(summary, email),
+  };
+
+  const { isActive: isAutopilot, activate: activateAutopilot, deactivate: deactivateAutopilot, phantomPos } =
+    useAutopilot({
+      gameState: { phase, targetTaps, tapCount, sessionSummary, level, levelCount: LEVEL_COUNT },
+      callbacksRef: autopilotCallbacksRef,
+      canvasRef,
+      autopilotEmail: AUTOPILOT_EMAIL,
+    });
+
+  // ── Cheat codes ──────────────────────────────────────────────────────────
+
+  useCheatCodes({
+    // 197879 → instantly reveal and submit the correct answer
+    "197879": () => {
+      if (phase !== "answering") return;
+      const correct = String(targetTapsRef.current);
+      setCalcValue(correct);
+      requestAnimationFrame(() => handleKeypadSubmitRef.current(correct));
+    },
+    // 198081 → toggle autopilot
+    "198081": () => {
+      if (isAutopilot) deactivateAutopilot();
+      else activateAutopilot();
+    },
+  });
+
+  // ── Scene capture (dev only) ─────────────────────────────────────────────
 
   async function handleCaptureScene() {
     if (!IS_LOCALHOST_DEV || !canvasRef.current) return;
@@ -286,7 +345,8 @@ export default function RippleScreen() {
     return () => document.removeEventListener("touchmove", prevent);
   }, []);
 
-  // Build question text
+  // ── Question text ────────────────────────────────────────────────────────
+
   let questionText: string;
   if (phase === "tapping") {
     questionText = `Tap the screen! (${tapCount}/${targetTaps})`;
@@ -299,86 +359,95 @@ export default function RippleScreen() {
   }
 
   return (
-    <GameLayout
-      muted={muted}
-      onToggleMute={handleToggleMute}
-      onRestart={handleRestart}
-      onCapture={IS_LOCALHOST_DEV ? handleCaptureScene : undefined}
-      keypadValue={calcValue}
-      onKeypadChange={phase === "answering" ? setCalcValue : undefined}
-      onKeypadSubmit={phase === "answering" ? handleKeypadSubmit : undefined}
-      canSubmit={phase === "answering" && calcValue.length > 0}
-      question={questionText}
-      questionShake={questionShake}
-      progress={eggsCollected}
-      progressTotal={EGGS_PER_ROUND}
-      levelCount={LEVEL_COUNT}
-      currentLevel={level}
-      unlockedLevel={unlockedLevel}
-      onLevelSelect={handleLevelSelect}
-    >
-      {/* Game canvas */}
-      <div
-        ref={canvasRef}
-        className="absolute inset-0 cursor-crosshair select-none"
-        style={{ touchAction: "none" }}
-        onPointerDown={handleCanvasTap}
+    <>
+      <GameLayout
+        muted={muted}
+        onToggleMute={handleToggleMute}
+        onRestart={handleRestart}
+        onCapture={IS_LOCALHOST_DEV ? handleCaptureScene : undefined}
+        keypadValue={calcValue}
+        onKeypadChange={phase === "answering" ? setCalcValue : undefined}
+        onKeypadSubmit={phase === "answering" ? handleKeypadSubmit : undefined}
+        canSubmit={phase === "answering" && calcValue.length > 0}
+        question={questionText}
+        questionShake={questionShake}
+        progress={eggsCollected}
+        progressTotal={EGGS_PER_ROUND}
+        levelCount={LEVEL_COUNT}
+        currentLevel={level}
+        unlockedLevel={unlockedLevel}
+        onLevelSelect={handleLevelSelect}
+        isAutopilot={isAutopilot}
+        onCancelAutopilot={deactivateAutopilot}
+        forceKeypadExpanded={isAutopilot && phase === "answering"}
       >
-        {/* Deep-space gradient background */}
-        <div className="absolute inset-0" style={{
-          background: "radial-gradient(ellipse at top, #1e3a5f 0%, #080e1c 72%)",
-        }} />
-        {/* Arcade grid overlay */}
-        <div className="absolute inset-0 arcade-grid opacity-20 pointer-events-none" />
-        {/* Stars */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.55 }}>
-          {[
-            [8,12],[22,38],[37,7],[55,28],[70,14],[85,41],[95,6],
-            [12,55],[28,72],[44,60],[60,80],[76,65],[90,78],
-            [5,88],[18,95],[32,85],[48,92],[64,88],[80,96],
-            [15,30],[42,44],[68,35],[88,22],[3,68],[52,18],
-            [74,52],[38,96],[92,48],[25,18],[61,46],
-          ].map(([x, y], i) => (
-            <circle key={i} cx={`${x}%`} cy={`${y}%`} r={i % 3 === 0 ? 1.5 : 1} fill="white" />
-          ))}
-        </svg>
-
-        {/* Ripple animations */}
-        {ripples.map((r) => (
-          <div key={r.id} className="absolute pointer-events-none"
-            style={{ left: `${r.x}%`, top: `${r.y}%`, transform: "translate(-50%, -50%)" }}>
-            {[0, 1, 2].map((ring) => (
-              <div key={ring} className="absolute rounded-full"
-                style={{
-                  width: `${60 + ring * 40}px`,
-                  height: `${60 + ring * 40}px`,
-                  border: `${3 - ring}px solid ${r.color}`,
-                  transform: "translate(-50%, -50%)",
-                  animation: `ripple-expand ${RIPPLE_DURATION_MS}ms ease-out ${ring * 80}ms forwards`,
-                }} />
+        {/* Game canvas */}
+        <div
+          ref={canvasRef}
+          className="absolute inset-0 cursor-crosshair select-none"
+          style={{ touchAction: "none" }}
+          onPointerDown={handleCanvasTap}
+        >
+          {/* Deep-space gradient background */}
+          <div className="absolute inset-0" style={{
+            background: "radial-gradient(ellipse at top, #1e3a5f 0%, #080e1c 72%)",
+          }} />
+          {/* Arcade grid overlay */}
+          <div className="absolute inset-0 arcade-grid opacity-20 pointer-events-none" />
+          {/* Stars */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.55 }}>
+            {[
+              [8,12],[22,38],[37,7],[55,28],[70,14],[85,41],[95,6],
+              [12,55],[28,72],[44,60],[60,80],[76,65],[90,78],
+              [5,88],[18,95],[32,85],[48,92],[64,88],[80,96],
+              [15,30],[42,44],[68,35],[88,22],[3,68],[52,18],
+              [74,52],[38,96],[92,48],[25,18],[61,46],
+            ].map(([x, y], i) => (
+              <circle key={i} cx={`${x}%`} cy={`${y}%`} r={i % 3 === 0 ? 1.5 : 1} fill="white" />
             ))}
-            <div className="absolute rounded-full" style={{
-              width: "12px", height: "12px",
-              background: r.color,
-              transform: "translate(-50%, -50%)",
-              boxShadow: `0 0 12px ${r.color}`,
-              animation: `ripple-expand ${RIPPLE_DURATION_MS * 0.4}ms ease-out forwards`,
-            }} />
-          </div>
-        ))}
+          </svg>
 
-        <TutorialHint show={showTutorial} label="Tap anywhere!" />
-      </div>
+          {/* Ripple animations */}
+          {ripples.map((r) => (
+            <div key={r.id} className="absolute pointer-events-none"
+              style={{ left: `${r.x}%`, top: `${r.y}%`, transform: "translate(-50%, -50%)" }}>
+              {[0, 1, 2].map((ring) => (
+                <div key={ring} className="absolute rounded-full"
+                  style={{
+                    width: `${60 + ring * 40}px`,
+                    height: `${60 + ring * 40}px`,
+                    border: `${3 - ring}px solid ${r.color}`,
+                    transform: "translate(-50%, -50%)",
+                    animation: `ripple-expand ${RIPPLE_DURATION_MS}ms ease-out ${ring * 80}ms forwards`,
+                  }} />
+              ))}
+              <div className="absolute rounded-full" style={{
+                width: "12px", height: "12px",
+                background: r.color,
+                transform: "translate(-50%, -50%)",
+                boxShadow: `0 0 12px ${r.color}`,
+                animation: `ripple-expand ${RIPPLE_DURATION_MS * 0.4}ms ease-out forwards`,
+              }} />
+            </div>
+          ))}
 
-      {/* Session report modal */}
-      {sessionSummary && (
-        <SessionReportModal
-          summary={sessionSummary}
-          level={level}
-          onClose={handleReportClose}
-          onNextLevel={level < LEVEL_COUNT ? handleNextLevel : undefined}
-        />
-      )}
-    </GameLayout>
+          <TutorialHint show={showTutorial && !isAutopilot} label="Tap anywhere!" />
+        </div>
+
+        {/* Session report modal */}
+        {sessionSummary && (
+          <SessionReportModal
+            summary={sessionSummary}
+            level={level}
+            onClose={handleReportClose}
+            onNextLevel={level < LEVEL_COUNT ? handleNextLevel : undefined}
+            autopilotEmail={isAutopilot ? AUTOPILOT_EMAIL : undefined}
+          />
+        )}
+      </GameLayout>
+
+      {/* Phantom hand — fixed overlay, outside GameLayout so it renders above everything */}
+      <PhantomHand pos={phantomPos} />
+    </>
   );
 }

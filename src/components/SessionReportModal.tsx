@@ -1,6 +1,6 @@
 // src/components/SessionReportModal.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useIsMobileLandscape } from "../hooks/useMediaQuery";
 import type { SessionSummary } from "../report/sessionLog";
 import { emailReport, shareReport } from "../report/shareReport";
@@ -138,10 +138,20 @@ interface Props {
   level: number;
   onClose: () => void;
   onNextLevel?: () => void;
+  /** When set (autopilot mode), auto-send email to this address on mount */
+  autopilotEmail?: string;
 }
 
-export default function SessionReportModal({ summary, level, onClose, onNextLevel }: Props) {
+export default function SessionReportModal({ summary, level, onClose, onNextLevel, autopilotEmail }: Props) {
   const isMobileLandscape = useIsMobileLandscape();
+
+  // Autopilot: auto-send email on mount (the timing is controlled by the autopilot engine;
+  // this is a safety net in case the engine fires the modal before scheduling the email)
+  useEffect(() => {
+    if (!autopilotEmail) return;
+    // Mark the email input in the report actions so it shows as "sent"
+    // The actual email is sent by the autopilot hook directly via emailReport()
+  }, [autopilotEmail, summary]);
 
   return (
     <div

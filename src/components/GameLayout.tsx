@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useIsCoarsePointer, useIsMobileLandscape } from "../hooks/useMediaQuery";
 import { SocialComments, SocialShare, openCommentsComposer } from "./Social";
 import AudioButton from "./AudioButton";
+import AutopilotIcon from "./AutopilotIcon";
 import LevelButtons from "./LevelButtons";
 import NumericKeypad from "./NumericKeypad";
 import QuestionBox from "./QuestionBox";
@@ -36,6 +37,13 @@ interface GameLayoutProps {
   // Dev-only screenshot capture
   onCapture?: () => void;
 
+  // Autopilot
+  isAutopilot?: boolean;
+  onCancelAutopilot?: () => void;
+
+  // Forces keypad to stay expanded (used by autopilot when typing)
+  forceKeypadExpanded?: boolean;
+
   // Game canvas
   children: ReactNode;
 }
@@ -57,12 +65,17 @@ export default function GameLayout({
   unlockedLevel,
   onLevelSelect,
   onCapture,
+  isAutopilot = false,
+  onCancelAutopilot,
+  forceKeypadExpanded = false,
   children,
 }: GameLayoutProps) {
   const isMobileLandscape = useIsMobileLandscape();
   const isCoarsePointer = useIsCoarsePointer();
   // Minimized by default on touch devices; expanded by default on desktop
   const [calcMinimized, setCalcMinimized] = useState(() => isMobileLandscape || isCoarsePointer);
+  // Effective minimized state: autopilot forces expansion when needed
+  const effectiveCalcMinimized = forceKeypadExpanded ? false : calcMinimized;
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareDrawerOpen, setShareDrawerOpen] = useState(false);
 
@@ -177,6 +190,11 @@ export default function GameLayout({
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
+
+          {/* Autopilot indicator — only visible when autopilot is active */}
+          {isAutopilot && onCancelAutopilot && (
+            <AutopilotIcon onClick={onCancelAutopilot} />
+          )}
         </div>
 
         {/* Centre: progress dots */}
@@ -238,7 +256,7 @@ export default function GameLayout({
             onChange={onKeypadChange}
             onSubmit={onKeypadSubmit}
             canSubmit={canSubmit}
-            minimized={calcMinimized}
+            minimized={effectiveCalcMinimized}
             onToggleMinimized={toggleCalc}
           />
         </div>
