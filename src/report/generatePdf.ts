@@ -105,51 +105,79 @@ function drawRippleDiagram(
   width: number,
   height: number,
 ) {
-  // Dark background to mimic the game canvas
-  doc.setFillColor("#0f172a");
+  // Light background
+  doc.setFillColor("#f8fafc");
   doc.roundedRect(x, y, width, height, 3, 3, "F");
-  doc.setDrawColor("#334155");
+  doc.setDrawColor("#cbd5e1");
   doc.setLineWidth(0.3);
   doc.roundedRect(x, y, width, height, 3, 3, "S");
 
-  // Draw subtle grid
-  doc.setDrawColor("#1e293b");
-  doc.setLineWidth(0.15);
+  // Dot grid
+  doc.setFillColor("#cbd5e1");
   const gridStep = 8;
-  for (let gx = x + gridStep; gx < x + width; gx += gridStep) {
-    doc.line(gx, y, gx, y + height);
-  }
-  for (let gy = y + gridStep; gy < y + height; gy += gridStep) {
-    doc.line(x, gy, x + width, gy);
+  for (let gx = x + gridStep; gx < x + width - 1; gx += gridStep) {
+    for (let gy = y + gridStep; gy < y + height - 1; gy += gridStep) {
+      doc.circle(gx, gy, 0.35, "F");
+    }
   }
 
-  // Draw each ripple as concentric circles
-  const padding = 2;
+  // Draw each ripple as concentric circles, with overlap-aware labels
+  const padding = 4;
+  const labelH = 3.5; // approximate label height in mm
+  const placedLabels: { lx: number; ly: number; w: number }[] = [];
+
   for (const rp of attempt.ripplePositions) {
     const px = x + padding + (rp.x / 100) * (width - padding * 2);
     const py = y + padding + (rp.y / 100) * (height - padding * 2);
 
     // Outer rings
     doc.setDrawColor(rp.color);
-    doc.setLineWidth(0.4);
+    doc.setLineWidth(0.5);
     doc.circle(px, py, 4, "S");
-    doc.setLineWidth(0.25);
-    doc.circle(px, py, 6, "S");
+    doc.setLineWidth(0.3);
+    doc.circle(px, py, 6.5, "S");
 
     // Center dot
     doc.setFillColor(rp.color);
-    doc.circle(px, py, 1.2, "F");
+    doc.circle(px, py, 1.5, "F");
 
-    // Coordinate label
+    // Overlap-aware label placement
     doc.setFontSize(4.5);
-    doc.setTextColor(rp.color);
-    doc.text(`(${rp.x},${rp.y})`, px, py + 8.5, { align: "center" });
+    const labelText = `(${rp.x},${rp.y})`;
+    const labelW = doc.getTextWidth(labelText);
+
+    // Candidate positions: below, above, right, left
+    const candidates = [
+      { lx: px, ly: py + 9.5 },
+      { lx: px, ly: py - 8 },
+      { lx: px + 9, ly: py + 1 },
+      { lx: px - 9, ly: py + 1 },
+    ];
+
+    let chosen = candidates[0];
+    for (const cand of candidates) {
+      // Keep label inside diagram bounds
+      if (cand.lx - labelW / 2 < x + 1 || cand.lx + labelW / 2 > x + width - 1) continue;
+      if (cand.ly > y + height - 1.5 || cand.ly - labelH < y + 1) continue;
+      // Check against already-placed labels
+      const overlaps = placedLabels.some(
+        (p) => Math.abs(p.lx - cand.lx) < (p.w + labelW) / 2 + 1 && Math.abs(p.ly - cand.ly) < labelH + 1,
+      );
+      if (!overlaps) { chosen = cand; break; }
+    }
+    placedLabels.push({ lx: chosen.lx, ly: chosen.ly, w: labelW });
+
+    doc.setTextColor("#1e293b");
+    doc.text(labelText, chosen.lx, chosen.ly, { align: "center" });
   }
 
-  // "Ripple count" label
+  // "Ripple count" label at bottom
   doc.setFontSize(5);
-  doc.setTextColor("#94a3b8");
-  doc.text(`${attempt.ripplePositions.length} ripple${attempt.ripplePositions.length !== 1 ? "s" : ""}`, x + width / 2, y + height - 2, { align: "center" });
+  doc.setTextColor("#64748b");
+  doc.text(
+    `${attempt.ripplePositions.length} ripple${attempt.ripplePositions.length !== 1 ? "s" : ""}`,
+    x + width / 2, y + height - 2, { align: "center" },
+  );
 }
 
 // --- Main PDF generation ---

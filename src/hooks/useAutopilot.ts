@@ -10,7 +10,7 @@ const T = {
   KEY_BETWEEN:  [360, 680]   as [number, number],   // between keypad digits
   PRE_SUBMIT:   [440, 760]   as [number, number],   // before pressing submit
   EMAIL_CLICK:  [2000, 3200] as [number, number],   // after modal, before typing email
-  EMAIL_CHAR:   [280, 480]   as [number, number],   // between email characters
+  EMAIL_CHAR:   [8, 15]      as [number, number],   // between email characters
   SEND_PAUSE:   [700, 1100]  as [number, number],   // after last char, before send
   END_PAUSE:    [3600, 5000] as [number, number],   // after send, before next level
 } as const;

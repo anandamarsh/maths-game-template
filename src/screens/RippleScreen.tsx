@@ -338,7 +338,6 @@ export default function RippleScreen() {
     setSessionSummary(null);
     setPhase("tapping");
     setEggsCollected(0);
-    startSession();
     startNewRound(next);
   }
 
