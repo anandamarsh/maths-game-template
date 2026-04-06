@@ -25,9 +25,9 @@
     }
   ],
   "screenshots": [],
-  "tags": ["counting", "touch", "ripple", "template"],
+  "tags": ["template", "starter", "counting", "touch", "ripple"],
   "subjects": ["maths"],
   "skills": ["counting", "number recognition"],
   "githubUrl": "https://github.com/anandamarsh/maths-game-template",
-  "description": "Build: __BUILD_STAMP__\n\nRipple Touch is a template game for the Interactive Maths platform.\n\nWHAT IT DOES:\nTap anywhere on the screen to create colourful ripple effects with sound. Collect 10 eggs by tapping — every 5 taps earns one egg.\n\nWHAT IT TEACHES:\nFree-play sensory exploration; serves as a starter template for third-party Interactive Maths games.\n\nTECH: React, TypeScript, Vite, Tailwind CSS, Web Audio API."
+  "description": "Build: __BUILD_STAMP__\n\nRipple Touch — Interactive Maths Game Template\n\nThis is the official starting point for building games on the Interactive Maths platform. Fork this repo and replace the game logic to create your own curriculum-aligned maths game.\n\nWHAT IT DOES:\nTap anywhere on the screen to create colourful ripple effects with sound. Collect eggs by tapping — every few taps earns one egg. A simple tap-counting mechanic designed to demonstrate the full game scaffold.\n\nWHAT IT TEACHES:\nFree-play sensory exploration. The game mechanic intentionally simple so the focus is the platform scaffold, not the curriculum content.\n\nFOR DEVELOPERS:\n- Replace src/game/rippleGame.ts with your own game logic\n- Replace src/screens/RippleScreen.tsx with your game canvas\n- Update public/manifest.json with your game metadata\n- See GAME_GUIDE.md for the full guide\n\nTECH: React 19, TypeScript, Vite, Tailwind CSS, Web Audio API, PWA-ready."
 }
