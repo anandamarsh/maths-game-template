@@ -226,7 +226,6 @@ export default function RippleScreen() {
   // Physical keyboard support
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (phase !== "answering") return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
 
@@ -240,6 +239,7 @@ export default function RippleScreen() {
         e.preventDefault();
         setCalcValue((v) => v.slice(0, -1));
       } else if (e.key === "Enter") {
+        if (phase !== "answering") return;
         e.preventDefault();
         handleKeypadSubmit();
       } else if (e.key === ".") {

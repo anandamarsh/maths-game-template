@@ -21,8 +21,8 @@ export interface RoundConfig {
 }
 
 const LEVEL_CONFIG: Record<Level, { min: number; max: number; color: string }> = {
-  1: { min: 3, max: 5, color: "#67e8f9" }, // cyan
-  2: { min: 6, max: 9, color: "#fbbf24" }, // gold
+  1: { min: 3, max: 3, color: "#67e8f9" }, // cyan
+  2: { min: 3, max: 3, color: "#fbbf24" }, // gold
 };
 
 export function makeRound(level: Level): RoundConfig {
