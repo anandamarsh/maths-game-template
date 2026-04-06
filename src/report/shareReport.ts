@@ -5,7 +5,32 @@ import type { SessionSummary } from "./sessionLog";
 
 const SITE_URL = "https://www.seemaths.com";
 const GAME_NAME = "Ripple Touch";
-const SENDER_NAME = "SeeMaths Ripple Touch";
+const SENDER_NAME = "Ripple Touch";
+const CURRICULUM_INDEX_URL =
+  "https://www.educationstandards.nsw.edu.au/wps/portal/nesa/k-10/learning-areas/mathematics/mathematics-k-10";
+const CURRICULUM_BY_LEVEL = {
+  1: {
+    stageLabel: "Early Stage 1 (Kindergarten) NSW Curriculum",
+    code: "MAe-1WM",
+    description: "Demonstrates and describes counting sequences.",
+    syllabusUrl:
+      "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=6",
+  },
+  2: {
+    stageLabel: "Early Stage 1 (Kindergarten) NSW Curriculum",
+    code: "MAe-1WM",
+    description: "Demonstrates and describes counting sequences.",
+    syllabusUrl:
+      "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=6",
+  },
+  3: {
+    stageLabel: "Early Stage 1 (Kindergarten) NSW Curriculum",
+    code: "MAe-1WM",
+    description: "Demonstrates and describes counting sequences.",
+    syllabusUrl:
+      "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=6",
+  },
+} as const;
 
 function getReportFileName(summary: SessionSummary): string {
   const stamp = new Date().toISOString().slice(0, 10);
@@ -103,6 +128,24 @@ export async function shareReport(summary: SessionSummary): Promise<boolean> {
   return true;
 }
 
+function getEmailMetadata(summary: SessionSummary) {
+  const level = (summary.level in CURRICULUM_BY_LEVEL ? summary.level : 1) as keyof typeof CURRICULUM_BY_LEVEL;
+  const curriculum = CURRICULUM_BY_LEVEL[level];
+  return {
+    gameName: GAME_NAME,
+    senderName: SENDER_NAME,
+    siteUrl: SITE_URL,
+    sessionTime: formatSessionTime(summary.startTime),
+    sessionDate: formatSessionDate(summary.startTime),
+    durationText: formatDurationMinutes(summary.startTime, summary.endTime),
+    stageLabel: curriculum.stageLabel,
+    curriculumCode: curriculum.code,
+    curriculumDescription: curriculum.description,
+    curriculumUrl: curriculum.syllabusUrl,
+    curriculumIndexUrl: CURRICULUM_INDEX_URL,
+  };
+}
+
 export async function emailReport(
   summary: SessionSummary,
   email: string,
@@ -118,12 +161,7 @@ export async function emailReport(
       correctCount: summary.correctCount,
       totalQuestions: summary.totalQuestions,
       accuracy: summary.accuracy,
-      gameName: GAME_NAME,
-      senderName: SENDER_NAME,
-      siteUrl: SITE_URL,
-      sessionTime: formatSessionTime(summary.startTime),
-      sessionDate: formatSessionDate(summary.startTime),
-      durationText: formatDurationMinutes(summary.startTime, summary.endTime),
+      ...getEmailMetadata(summary),
       reportFileName: getReportFileName(summary),
     }),
   });
