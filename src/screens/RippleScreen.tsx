@@ -39,6 +39,10 @@ export default function RippleScreen() {
   const [phase, setPhase] = useState<GamePhase>("tapping");
   const [tapCount, setTapCount] = useState(0);
   const [targetTaps, setTargetTaps] = useState(0);
+  const [autopilotMode, setAutopilotMode] = useState<
+    "continuous" | "single-question"
+  >("continuous");
+  const [demoRetryPending, setDemoRetryPending] = useState(false);
   const [eggsCollected, setEggsCollected] = useState(0);
   const [questionShake, setQuestionShake] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState("");
@@ -46,6 +50,8 @@ export default function RippleScreen() {
 
   // Track ripple positions for current round (for the report diagram)
   const roundRipplesRef = useRef<RipplePosition[]>([]);
+  const singleQuestionDemoRef = useRef(false);
+  const demoRecoveryPendingRef = useRef(false);
 
   const rippleIdRef = useRef(0);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -75,7 +81,33 @@ export default function RippleScreen() {
     startQuestionTimer();
   }
 
+  function resetDemoRound() {
+    setRipples([]);
+    setTapCount(0);
+    setCalcValue("");
+    setFeedbackMsg("");
+    setQuestionShake(false);
+    setPhase("tapping");
+    roundRipplesRef.current = [];
+    startQuestionTimer();
+  }
+
+  function spendSingleQuestionDemoPoint() {
+    setEggsCollected((value) => Math.max(0, value - 1));
+  }
+
+  function restoreSingleQuestionDemoPoint() {
+    setEggsCollected((value) => Math.min(EGGS_PER_ROUND, value + 1));
+  }
+
+  function clearDemoState() {
+    setDemoRetryPending(false);
+    singleQuestionDemoRef.current = false;
+    demoRecoveryPendingRef.current = false;
+  }
+
   function handleRestart() {
+    clearDemoState();
     setRipples([]);
     setLevel(1);
     setUnlockedLevel(1);
@@ -90,6 +122,7 @@ export default function RippleScreen() {
 
   function handleLevelSelect(lv: number) {
     const l = lv as 1 | 2;
+    clearDemoState();
     setLevel(l);
     setRipples([]);
     setEggsCollected(0);
@@ -115,6 +148,7 @@ export default function RippleScreen() {
 
   const doTap = useCallback(
     (normX: number, normY: number) => {
+      if (demoRetryPending) return;
       if (phase !== "tapping") return;
 
       ensureMusic();
@@ -138,11 +172,13 @@ export default function RippleScreen() {
       const newCount = tapCount + 1;
       setTapCount(newCount);
 
-      setEggsCollected((eggs) => {
-        const newEggs = Math.min(eggs + 1, EGGS_PER_ROUND);
-        if (eggs < EGGS_PER_ROUND) playLevelComplete();
-        return newEggs;
-      });
+      if (!singleQuestionDemoRef.current && !demoRecoveryPendingRef.current) {
+        setEggsCollected((eggs) => {
+          const newEggs = Math.min(eggs + 1, EGGS_PER_ROUND);
+          if (eggs < EGGS_PER_ROUND) playLevelComplete();
+          return newEggs;
+        });
+      }
 
       if (newCount >= targetTaps) {
         setTimeout(() => {
@@ -151,7 +187,7 @@ export default function RippleScreen() {
         }, 500);
       }
     },
-    [phase, tapCount, targetTaps],
+    [demoRetryPending, phase, tapCount, targetTaps],
   );
 
   const handleCanvasTap = useCallback(
@@ -169,6 +205,7 @@ export default function RippleScreen() {
   // ── Answer submission (accepts optional override for cheat code / autopilot) ──
 
   const handleKeypadSubmit = useCallback((overrideValue?: string) => {
+    if (demoRetryPending) return;
     if (phase !== "answering") return;
     const raw = overrideValue ?? calcValue;
     const answer = parseInt(raw, 10);
@@ -177,15 +214,17 @@ export default function RippleScreen() {
     const correct = targetTaps;
     const isCorrect = answer === correct;
 
-    logAttempt({
-      prompt: roundRef.current.entryPrompt,
-      level,
-      correctAnswer: correct,
-      childAnswer: answer,
-      isCorrect,
-      gamePhase: "normal",
-      ripplePositions: [...roundRipplesRef.current],
-    });
+    if (!singleQuestionDemoRef.current) {
+      logAttempt({
+        prompt: roundRef.current.entryPrompt,
+        level,
+        correctAnswer: correct,
+        childAnswer: answer,
+        isCorrect,
+        gamePhase: "normal",
+        ripplePositions: [...roundRipplesRef.current],
+      });
+    }
 
     if (isCorrect) {
       playCorrect();
@@ -200,7 +239,20 @@ export default function RippleScreen() {
     setPhase("feedback");
     setTimeout(() => {
       setFeedbackMsg("");
-      if (eggsCollected >= EGGS_PER_ROUND) {
+      if (singleQuestionDemoRef.current) {
+        singleQuestionDemoRef.current = false;
+        demoRecoveryPendingRef.current = true;
+        setDemoRetryPending(true);
+      } else if (demoRecoveryPendingRef.current) {
+        if (isCorrect) {
+          restoreSingleQuestionDemoPoint();
+        }
+        clearDemoState();
+        setQuestionShake(false);
+        setFeedbackMsg("");
+        setRipples([]);
+        startNewRound(level);
+      } else if (eggsCollected >= EGGS_PER_ROUND) {
         playLevelComplete();
         setUnlockedLevel((u) => Math.min(u + 1, LEVEL_COUNT));
         const summary = buildSummary({
@@ -217,7 +269,7 @@ export default function RippleScreen() {
         startNewRound(level);
       }
     }, 1200);
-  }, [phase, calcValue, targetTaps, level, eggsCollected]);
+  }, [demoRetryPending, phase, calcValue, targetTaps, level, eggsCollected]);
 
   // Ref so cheat code callback always has the latest submit function
   const handleKeypadSubmitRef = useRef(handleKeypadSubmit);
@@ -226,6 +278,7 @@ export default function RippleScreen() {
   // Physical keyboard support
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if (demoRetryPending) return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
 
@@ -255,7 +308,7 @@ export default function RippleScreen() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [phase, handleKeypadSubmit]);
+  }, [demoRetryPending, phase, handleKeypadSubmit]);
 
   // ── Autopilot setup ──────────────────────────────────────────────────────
 
@@ -265,6 +318,7 @@ export default function RippleScreen() {
 
   const { isActive: isAutopilot, activate: activateAutopilot, deactivate: deactivateAutopilot, phantomPos } =
     useAutopilot({
+      mode: autopilotMode,
       gameState: { phase, targetTaps, tapCount, level, levelCount: LEVEL_COUNT },
       callbacksRef: autopilotCallbacksRef,
       canvasRef,
@@ -295,10 +349,45 @@ export default function RippleScreen() {
     },
     // 198081 → toggle autopilot
     "198081": () => {
-      if (isAutopilot) deactivateAutopilot();
-      else { setCalcValue(""); activateAutopilot(); }
+      singleQuestionDemoRef.current = false;
+      if (isAutopilot && autopilotMode === "continuous") {
+        deactivateAutopilot();
+      } else {
+        if (isAutopilot) deactivateAutopilot();
+        setAutopilotMode("continuous");
+        setCalcValue("");
+        activateAutopilot();
+      }
     },
   });
+
+  function handleSingleQuestionDemo() {
+    clearDemoState();
+    if (isAutopilot) {
+      deactivateAutopilot();
+    }
+    spendSingleQuestionDemoPoint();
+    singleQuestionDemoRef.current = true;
+    setAutopilotMode("single-question");
+    setCalcValue("");
+    activateAutopilot();
+  }
+
+  function handleDemoTryAgain() {
+    setDemoRetryPending(false);
+    setFeedbackMsg("");
+    setQuestionShake(false);
+    setRipples([]);
+    resetDemoRound();
+  }
+
+  const isRobotVisibleActive = isAutopilot;
+  const handleRobotButtonClick = isRobotVisibleActive
+    ? () => {
+        clearDemoState();
+        deactivateAutopilot();
+      }
+    : handleSingleQuestionDemo;
 
   // ── Scene capture (dev only) ─────────────────────────────────────────────
 
@@ -325,6 +414,7 @@ export default function RippleScreen() {
   }
 
   function handleReportClose() {
+    clearDemoState();
     setSessionSummary(null);
     setPhase("tapping");
     setEggsCollected(0);
@@ -334,6 +424,7 @@ export default function RippleScreen() {
 
   function handleNextLevel() {
     const next = Math.min(level + 1, LEVEL_COUNT) as 1 | 2;
+    clearDemoState();
     setLevel(next);
     setSessionSummary(null);
     setPhase("tapping");
@@ -379,8 +470,10 @@ export default function RippleScreen() {
         currentLevel={level}
         unlockedLevel={unlockedLevel}
         onLevelSelect={handleLevelSelect}
-        isAutopilot={isAutopilot}
-        onCancelAutopilot={deactivateAutopilot}
+        isAutopilot={false}
+        onCancelAutopilot={undefined}
+        isQuestionDemo={isRobotVisibleActive}
+        onQuestionDemo={handleRobotButtonClick}
         forceKeypadExpanded={isAutopilot && phase === "answering"}
       >
         {/* Game canvas */}
@@ -447,6 +540,22 @@ export default function RippleScreen() {
           />
         )}
       </GameLayout>
+
+      {demoRetryPending && (
+        <div className="fixed inset-0 z-[85]">
+          <div className="absolute inset-0 pointer-events-auto" />
+          <div className="absolute left-1/2 top-6 -translate-x-1/2">
+            <button
+              type="button"
+              onClick={handleDemoTryAgain}
+              className="arcade-button inline-flex px-8 py-4 text-base md:text-lg"
+              style={{ borderColor: "#fbbf24" }}
+            >
+              Try on your own
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Phantom hand — fixed overlay, outside GameLayout so it renders above everything */}
       <PhantomHand pos={phantomPos} />

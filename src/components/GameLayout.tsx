@@ -40,6 +40,8 @@ interface GameLayoutProps {
   // Autopilot
   isAutopilot?: boolean;
   onCancelAutopilot?: () => void;
+  isQuestionDemo?: boolean;
+  onQuestionDemo?: () => void;
 
   // Forces keypad to stay expanded (used by autopilot when typing)
   forceKeypadExpanded?: boolean;
@@ -65,8 +67,8 @@ export default function GameLayout({
   unlockedLevel,
   onLevelSelect,
   onCapture,
-  isAutopilot = false,
-  onCancelAutopilot,
+  isQuestionDemo = false,
+  onQuestionDemo,
   forceKeypadExpanded = false,
   children,
 }: GameLayoutProps) {
@@ -143,12 +145,10 @@ export default function GameLayout({
         <SocialShare />
       </div>
 
-      {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-row items-center gap-2 px-2 py-2 shrink-0">
-        {/* Left: all controls — first slot reserved for shell home button (injected at absolute top-2 left-2) */}
-        <div className="flex items-center gap-1.5">
+      {/* ── Top bar overlay ─────────────────────────────────────────────── */}
+      <div className="absolute inset-x-0 top-0 z-[60] h-20 pointer-events-none">
+        <div className="absolute left-2 top-2 flex items-center gap-1.5 z-[62] pointer-events-auto">
           <div className="w-10 h-10 shrink-0" aria-hidden="true" />
-          <AudioButton muted={muted} onToggle={onToggleMute} />
 
           {onRestart && (
             <button onClick={onRestart} title="Restart"
@@ -160,16 +160,7 @@ export default function GameLayout({
             </button>
           )}
 
-          <button onClick={handleShare} title="Share"
-            className="arcade-button w-10 h-10 flex items-center justify-center p-2">
-            <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-              <circle cx="18" cy="5" r="3" stroke="white" strokeWidth="2" />
-              <circle cx="6" cy="12" r="3" stroke="white" strokeWidth="2" />
-              <circle cx="18" cy="19" r="3" stroke="white" strokeWidth="2" />
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="white" strokeWidth="2" strokeLinecap="round" />
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="white" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
+          <AudioButton muted={muted} onToggle={onToggleMute} />
 
           {onCapture && (
             <button onClick={onCapture} title="Screenshot"
@@ -181,48 +172,68 @@ export default function GameLayout({
               </svg>
             </button>
           )}
-
-          {/* Comments — plain chat bubble, no + sign */}
-          <button onClick={() => setCommentsOpen((o) => !o)} title="Comments"
-            className="arcade-button w-10 h-10 flex items-center justify-center p-2">
-            <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-                stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-
-          {/* Autopilot indicator — only visible when autopilot is active */}
-          {isAutopilot && onCancelAutopilot && (
-            <AutopilotIcon onClick={onCancelAutopilot} />
-          )}
         </div>
 
-        {/* Centre: progress dots */}
-        {dots && (
-          <div className="flex-1 flex items-center justify-center gap-1.5">
-            {dots.map((filled, i) => (
-              <div key={i} className="w-3.5 h-3.5 rounded-full border-2 transition-all duration-300"
-                style={{
-                  background: filled ? "#67e8f9" : "transparent",
-                  borderColor: filled ? "#67e8f9" : "#334155",
-                  boxShadow: filled ? "0 0 8px rgba(103,232,249,0.8)" : undefined,
-                  transform: filled ? "scale(1.15)" : "scale(1)",
-                }} />
-            ))}
-          </div>
-        )}
-
-        {/* Right: level buttons */}
-        {levelCount !== undefined && currentLevel !== undefined && unlockedLevel !== undefined && onLevelSelect && (
-          <div className="ml-auto">
+        <div
+          className="absolute left-1/2 -translate-x-1/2 z-[61] flex flex-col items-center gap-1.5 pointer-events-auto"
+          style={{ top: "0.5rem" }}
+        >
+          {levelCount !== undefined && currentLevel !== undefined && unlockedLevel !== undefined && onLevelSelect && (
             <LevelButtons
               levelCount={levelCount}
               currentLevel={currentLevel}
               unlockedLevel={unlockedLevel}
               onSelect={onLevelSelect}
             />
-          </div>
-        )}
+          )}
+
+          {dots && (
+            <div className="flex items-center justify-center gap-1.5">
+              {dots.map((filled, i) => (
+                <div key={i} className="w-3.5 h-3.5 rounded-full border-2 transition-all duration-300"
+                  style={{
+                    background: filled ? "#67e8f9" : "transparent",
+                    borderColor: filled ? "#67e8f9" : "rgba(255,255,255,0.26)",
+                    boxShadow: filled ? "0 0 8px rgba(103,232,249,0.8)" : undefined,
+                    transform: filled ? "scale(1.15)" : "scale(1)",
+                  }} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div
+          className="social-launchers pointer-events-auto"
+          style={!isCoarsePointer ? { top: "0.5rem" } : undefined}
+        >
+          {onQuestionDemo && (
+            <AutopilotIcon
+              onClick={onQuestionDemo}
+              active={isQuestionDemo}
+              title="Show how to solve this question"
+              ariaLabel="Show how to solve this question"
+            />
+          )}
+
+          <button onClick={handleShare} title="Share"
+            className={`social-launcher arcade-button ${shareDrawerOpen ? "is-active" : ""}`}>
+            <svg viewBox="0 0 24 24" fill="none" className="social-launcher-icon">
+              <circle cx="18" cy="5" r="3" stroke="white" strokeWidth="2" />
+              <circle cx="6" cy="12" r="3" stroke="white" strokeWidth="2" />
+              <circle cx="18" cy="19" r="3" stroke="white" strokeWidth="2" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="white" strokeWidth="2" strokeLinecap="round" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="white" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          <button onClick={() => setCommentsOpen((o) => !o)} title="Comments"
+            className={`social-launcher arcade-button ${commentsOpen ? "is-active" : ""}`}>
+            <svg viewBox="0 0 24 24" fill="none" className="social-launcher-icon">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* ── Rest: canvas (absolute) + floating bottom bar ───────────────── */}
