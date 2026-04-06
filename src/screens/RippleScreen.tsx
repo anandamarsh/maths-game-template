@@ -261,16 +261,6 @@ export default function RippleScreen() {
   // ── Autopilot setup ──────────────────────────────────────────────────────
 
   const autopilotCallbacksRef = useRef<AutopilotCallbacks | null>(null);
-  // Always-current callbacks for autopilot
-  autopilotCallbacksRef.current = {
-    simulateTap: doTap,
-    setCalcValue,
-    submitAnswer: (ov) => handleKeypadSubmitRef.current(ov),
-    goNextLevel: handleNextLevel,
-    playAgain: handleReportClose,
-    restartAll: handleRestart,
-    sendEmail: (summary, email) => emailReport(summary, email),
-  };
 
   const { isActive: isAutopilot, activate: activateAutopilot, deactivate: deactivateAutopilot, phantomPos } =
     useAutopilot({
@@ -279,6 +269,18 @@ export default function RippleScreen() {
       canvasRef,
       autopilotEmail: AUTOPILOT_EMAIL,
     });
+
+  // Always-current callbacks — updated every render, after deactivateAutopilot is available
+  autopilotCallbacksRef.current = {
+    simulateTap: doTap,
+    setCalcValue,
+    submitAnswer: (ov) => handleKeypadSubmitRef.current(ov),
+    goNextLevel: handleNextLevel,
+    playAgain: handleReportClose,
+    restartAll: handleRestart,
+    sendEmail: (summary, email) => emailReport(summary, email),
+    onAutopilotComplete: deactivateAutopilot,
+  };
 
   // ── Cheat codes ──────────────────────────────────────────────────────────
 
@@ -367,7 +369,7 @@ export default function RippleScreen() {
         onCapture={IS_LOCALHOST_DEV ? handleCaptureScene : undefined}
         keypadValue={calcValue}
         onKeypadChange={phase === "answering" ? setCalcValue : undefined}
-        onKeypadSubmit={phase === "answering" ? handleKeypadSubmit : undefined}
+        onKeypadSubmit={phase === "answering" ? () => handleKeypadSubmit() : undefined}
         canSubmit={phase === "answering" && calcValue.length > 0}
         question={questionText}
         questionShake={questionShake}

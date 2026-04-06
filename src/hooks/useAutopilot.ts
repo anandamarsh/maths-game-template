@@ -41,6 +41,8 @@ export interface AutopilotCallbacks {
   playAgain: () => void;
   restartAll: () => void;
   sendEmail: (summary: SessionSummary, email: string) => Promise<void>;
+  /** Called when autopilot naturally finishes (reached last level) */
+  onAutopilotComplete?: () => void;
 }
 
 export interface PhantomPos {
@@ -186,14 +188,17 @@ export function useAutopilot({
       });
     });
 
-    // Auto-proceed
+    // Auto-proceed: go to next level, or halt at the final level
     after(rand(T.END_PAUSE), () => {
       const { level, levelCount } = stateRef.current;
       if (level < levelCount) {
         callbacksRef.current?.goNextLevel();
       } else {
-        // After final level, restart from level 1 to loop forever
-        callbacksRef.current?.restartAll();
+        // Final level complete — stop autopilot and let the modal sit
+        isActiveRef.current = false;
+        setIsActive(false);
+        setPhantomPos(null);
+        callbacksRef.current?.onAutopilotComplete?.();
       }
     });
   }
