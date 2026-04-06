@@ -3,14 +3,67 @@
 import { generateSessionPdf } from "./generatePdf";
 import type { SessionSummary } from "./sessionLog";
 
+const SITE_URL = "https://www.seemaths.com";
+const GAME_NAME = "Ripple Touch";
+const SENDER_NAME = "SeeMaths Ripple Touch";
+
+function getReportFileName(summary: SessionSummary): string {
+  const stamp = new Date().toISOString().slice(0, 10);
+  const name = (summary.playerName || "explorer").toLowerCase().replace(/\s+/g, "-");
+  return `ripple-report-${name}-${stamp}.pdf`;
+}
+
+function getOrdinalSuffix(day: number): string {
+  if (day >= 11 && day <= 13) return "th";
+  const lastDigit = day % 10;
+  if (lastDigit === 1) return "st";
+  if (lastDigit === 2) return "nd";
+  if (lastDigit === 3) return "rd";
+  return "th";
+}
+
+function formatSessionDate(timestamp: number): string {
+  const date = new Date(timestamp);
+  const day = date.getDate();
+  const month = date.toLocaleDateString("en-AU", { month: "short" });
+  return `${day}${getOrdinalSuffix(day)} ${month}`;
+}
+
+function formatSessionTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString("en-AU", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function formatDurationMinutes(startTime: number, endTime: number): string {
+  const minutes = Math.max(1, Math.round((endTime - startTime) / 60000));
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to encode report."));
+    reader.onloadend = () => {
+      if (typeof reader.result !== "string") {
+        reject(new Error("Invalid report encoding."));
+        return;
+      }
+      const [, base64 = ""] = reader.result.split(",", 2);
+      resolve(base64);
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
 export async function downloadReport(summary: SessionSummary): Promise<void> {
   const blob = await generateSessionPdf(summary);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  const stamp = new Date().toISOString().slice(0, 10);
-  const name = (summary.playerName || "explorer").toLowerCase().replace(/\s+/g, "-");
-  a.download = `ripple-report-${name}-${stamp}.pdf`;
+  a.download = getReportFileName(summary);
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -19,9 +72,7 @@ export async function downloadReport(summary: SessionSummary): Promise<void> {
 
 export async function shareReport(summary: SessionSummary): Promise<boolean> {
   const blob = await generateSessionPdf(summary);
-  const stamp = new Date().toISOString().slice(0, 10);
-  const name = (summary.playerName || "explorer").toLowerCase().replace(/\s+/g, "-");
-  const fileName = `ripple-report-${name}-${stamp}.pdf`;
+  const fileName = getReportFileName(summary);
   const file = new File([blob], fileName, { type: "application/pdf" });
 
   const nav = navigator as Navigator & {
@@ -31,7 +82,7 @@ export async function shareReport(summary: SessionSummary): Promise<boolean> {
 
   const shareData: ShareData = {
     files: [file],
-    title: `${summary.playerName || "Explorer"}'s Ripple Touch Report`,
+    title: `${summary.playerName || "Explorer"}'s ${GAME_NAME} Report`,
     text: `Check out this maths session report! Score: ${summary.correctCount}/${summary.totalQuestions} (${summary.accuracy}%)`,
   };
 
@@ -50,6 +101,37 @@ export async function shareReport(summary: SessionSummary): Promise<boolean> {
 
   await downloadReport(summary);
   return true;
+}
+
+export async function emailReport(
+  summary: SessionSummary,
+  email: string,
+): Promise<void> {
+  const blob = await generateSessionPdf(summary);
+  const response = await fetch("/api/send-report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: email.trim(),
+      pdfBase64: await blobToBase64(blob),
+      playerName: summary.playerName || "Explorer",
+      correctCount: summary.correctCount,
+      totalQuestions: summary.totalQuestions,
+      accuracy: summary.accuracy,
+      gameName: GAME_NAME,
+      senderName: SENDER_NAME,
+      siteUrl: SITE_URL,
+      sessionTime: formatSessionTime(summary.startTime),
+      sessionDate: formatSessionDate(summary.startTime),
+      durationText: formatDurationMinutes(summary.startTime, summary.endTime),
+      reportFileName: getReportFileName(summary),
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(payload?.error || "Failed to send report email.");
+  }
 }
 
 export function canNativeShare(): boolean {

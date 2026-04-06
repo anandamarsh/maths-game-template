@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import html2canvas from "html2canvas";
 import GameLayout from "../components/GameLayout";
 import SessionReportModal from "../components/SessionReportModal";
 import TutorialHint from "../components/TutorialHint";
@@ -17,6 +18,7 @@ interface Ripple {
 const RIPPLE_DURATION_MS = 900;
 const EGGS_PER_ROUND = 3;     // 3 taps per round, each tap = 1 egg
 const LEVEL_COUNT = 3;
+const IS_LOCALHOST_DEV = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
 type GamePhase = "tapping" | "answering" | "feedback" | "levelComplete";
 
@@ -238,6 +240,28 @@ export default function RippleScreen() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [phase, handleKeypadSubmit]);
 
+  async function handleCaptureScene() {
+    if (!IS_LOCALHOST_DEV || !canvasRef.current) return;
+    try {
+      const canvas = await html2canvas(canvasRef.current, { scale: 2, useCORS: true, backgroundColor: null });
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const fileName = `ripple-scene-${stamp}.png`;
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }, "image/png");
+    } catch (err) {
+      console.error("Capture failed", err);
+    }
+  }
+
   function handleReportClose() {
     setSessionSummary(null);
     setPhase("tapping");
@@ -279,6 +303,7 @@ export default function RippleScreen() {
       muted={muted}
       onToggleMute={handleToggleMute}
       onRestart={handleRestart}
+      onCapture={IS_LOCALHOST_DEV ? handleCaptureScene : undefined}
       keypadValue={calcValue}
       onKeypadChange={phase === "answering" ? setCalcValue : undefined}
       onKeypadSubmit={phase === "answering" ? handleKeypadSubmit : undefined}

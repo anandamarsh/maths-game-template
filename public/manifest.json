@@ -24,7 +24,12 @@
       "purpose": "maskable"
     }
   ],
-  "screenshots": [],
+  "screenshots": [
+    "screenshots/ripple-scene-s1.png",
+    "screenshots/ripple-scene-s2.png",
+    "screenshots/ripple-scene-s3.png",
+    "screenshots/ripple-scene-s4.png"
+  ],
   "tags": ["template", "starter", "counting", "touch", "ripple"],
   "subjects": ["maths"],
   "skills": ["counting", "number recognition"],

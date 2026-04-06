@@ -33,6 +33,9 @@ interface GameLayoutProps {
   unlockedLevel?: number;
   onLevelSelect?: (level: number) => void;
 
+  // Dev-only screenshot capture
+  onCapture?: () => void;
+
   // Game canvas
   children: ReactNode;
 }
@@ -53,6 +56,7 @@ export default function GameLayout({
   currentLevel,
   unlockedLevel,
   onLevelSelect,
+  onCapture,
   children,
 }: GameLayoutProps) {
   const isMobileLandscape = useIsMobileLandscape();
@@ -153,6 +157,17 @@ export default function GameLayout({
               <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="white" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </button>
+
+          {onCapture && (
+            <button onClick={onCapture} title="Screenshot"
+              className="arcade-button w-10 h-10 flex items-center justify-center p-2">
+              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full"
+                stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+            </button>
+          )}
 
           {/* Comments — plain chat bubble, no + sign */}
           <button onClick={() => setCommentsOpen((o) => !o)} title="Comments"
