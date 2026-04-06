@@ -229,12 +229,30 @@ export function useAutopilot({
       }, 140);
     });
 
-    // Auto-proceed after send
+    // Auto-proceed after send — phantom-click "Next Level" or halt
     delay += rand(T.END_PAUSE);
+    after(delay - 400, () => {
+      const { level, levelCount } = stateRef.current;
+      if (level < levelCount) {
+        const rect = getKeyRect("next-level");
+        if (rect) moveHand(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      }
+    });
     after(delay, () => {
       const { level, levelCount } = stateRef.current;
       if (level < levelCount) {
-        callbacksRef.current?.goNextLevel();
+        const el = document.querySelector<HTMLElement>('[data-autopilot-key="next-level"]');
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          clickAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          window.setTimeout(() => {
+            if (!isActiveRef.current) return;
+            el.click();
+            setPhantomPos(null);
+          }, 140);
+        } else {
+          callbacksRef.current?.goNextLevel();
+        }
       } else {
         // Final level — halt autopilot, leave modal visible
         isActiveRef.current = false;

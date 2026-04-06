@@ -119,14 +119,16 @@ function LevelCompleteReportActions({
           type="button"
           onClick={handleShare}
           disabled={generating}
-          className="arcade-button min-w-0 shrink-0 px-3 py-3 text-sm md:px-5 md:text-base"
+          className="arcade-button relative shrink-0 px-3 py-3 text-sm md:px-5 md:text-base"
           style={{
             borderColor: "#fbbf24",
             opacity: generating ? 0.6 : 1,
             cursor: generating ? "not-allowed" : "pointer",
           }}
         >
-          {generating ? "Creating..." : "Share Report"}
+          {/* Always render "Share Report" to fix the button width; overlay "Creating..." on top */}
+          <span className={generating ? "invisible" : ""}>Share Report</span>
+          {generating && <span className="absolute inset-0 flex items-center justify-center">Creating...</span>}
         </button>
         <input
           type="email"
@@ -244,6 +246,7 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
           {level < 2 && onNextLevel && (
             <button
               onClick={onNextLevel}
+              data-autopilot-key="next-level"
               className="arcade-button px-8 py-4 text-base md:text-lg"
             >
               Next Level
