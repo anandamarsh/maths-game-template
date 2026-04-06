@@ -296,7 +296,7 @@ export default function RippleScreen() {
     // 198081 → toggle autopilot
     "198081": () => {
       if (isAutopilot) deactivateAutopilot();
-      else activateAutopilot();
+      else { setCalcValue(""); activateAutopilot(); }
     },
   });
 
