@@ -157,11 +157,9 @@ function LevelCompleteReportActions({
           </svg>
         </button>
       </div>
-      {emailFeedback && (
-        <div className={`mt-2 text-sm font-semibold ${emailError ? "text-rose-300" : "text-emerald-300"}`}>
-          {emailFeedback}
-        </div>
-      )}
+      <div className={`mt-2 text-sm font-semibold ${emailError ? "text-rose-300" : "text-emerald-300"} ${emailFeedback ? "" : "invisible"}`}>
+        {emailFeedback ?? "\u00a0"}
+      </div>
     </div>
   );
 }
