@@ -155,11 +155,12 @@ export function useAutopilot({
     for (const d of digits) {
       const td = delay;
       after(td, () => {
-        const rect = getKeyRect(d);
-        if (rect) clickAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        callbacksRef.current?.setCalcValue(prev =>
-          prev === "" || prev === "0" ? d : prev + d
-        );
+        const el = document.querySelector<HTMLElement>(`[data-autopilot-key="${d}"]`);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          clickAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          el.click(); // fires press() → playKeyClick() + flashKey() + onChange()
+        }
       });
       delay += rand(T.KEY_BETWEEN);
     }

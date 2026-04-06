@@ -23,6 +23,7 @@ export function useCheatCodes(handlers: Record<string, () => void>): void {
         for (const code of Object.keys(handlersRef.current)) {
           if (bufferRef.current.endsWith(code)) {
             bufferRef.current = "";
+            e.stopImmediatePropagation(); // prevent bubble-phase listeners seeing this key
             handlersRef.current[code]();
             return;
           }
