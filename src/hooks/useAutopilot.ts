@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { SessionSummary } from "../report/sessionLog";
 
 export type AutopilotGamePhase = "tapping" | "answering" | "feedback" | "levelComplete";
 
-// Human-paced timing ranges (ms) — quick but not robotic
+// ── Half-human-speed timing ranges (ms) ──────────────────────────────────────
 const T = {
-  TAP_FIRST:    [320, 550] as [number, number],   // pause before first tap
-  TAP_BETWEEN:  [380, 700] as [number, number],   // between canvas taps
-  READ_DELAY:   [700, 1200] as [number, number],  // "reading" the question
-  KEY_BETWEEN:  [180, 340] as [number, number],   // between keypad digits
-  PRE_SUBMIT:   [220, 380] as [number, number],   // pause before pressing submit
-  EMAIL_DELAY:  [1200, 1800] as [number, number], // before auto-emailing
-  END_PAUSE:    [1800, 2500] as [number, number], // before clicking next/play again
+  TAP_FIRST:    [640, 1100]  as [number, number],   // before first canvas tap
+  TAP_BETWEEN:  [760, 1400]  as [number, number],   // between canvas taps
+  READ_DELAY:   [1400, 2400] as [number, number],   // "reading" the question
+  KEY_BETWEEN:  [360, 680]   as [number, number],   // between keypad digits
+  PRE_SUBMIT:   [440, 760]   as [number, number],   // before pressing submit
+  EMAIL_CLICK:  [2000, 3200] as [number, number],   // after modal, before typing email
+  EMAIL_CHAR:   [280, 480]   as [number, number],   // between email characters
+  SEND_PAUSE:   [700, 1100]  as [number, number],   // after last char, before send
+  END_PAUSE:    [3600, 5000] as [number, number],   // after send, before next level
 } as const;
 
-const WRONG_ANSWER_RATE = 0.2; // 20% chance of submitting a wrong answer
+const WRONG_ANSWER_RATE = 0.2;
 
 function rand([lo, hi]: [number, number]): number {
   return Math.round(lo + Math.random() * (hi - lo));
@@ -27,10 +28,16 @@ function wrongAnswer(correct: number): number {
   return candidates[Math.floor(Math.random() * candidates.length)] ?? correct + 1;
 }
 
-/** Query a keypad button by its data-autopilot-key attribute */
 function getKeyRect(key: string): DOMRect | null {
   const el = document.querySelector<HTMLElement>(`[data-autopilot-key="${key}"]`);
   return el ? el.getBoundingClientRect() : null;
+}
+
+/** Controls exposed by the level-complete report modal for autopilot to drive */
+export interface ModalAutopilotControls {
+  appendChar: (ch: string) => void;
+  setEmail: (v: string) => void;
+  triggerSend: () => void;
 }
 
 export interface AutopilotCallbacks {
@@ -40,14 +47,13 @@ export interface AutopilotCallbacks {
   goNextLevel: () => void;
   playAgain: () => void;
   restartAll: () => void;
-  sendEmail: (summary: SessionSummary, email: string) => Promise<void>;
-  /** Called when autopilot naturally finishes (reached last level) */
+  emailModalControls: React.MutableRefObject<ModalAutopilotControls | null>;
   onAutopilotComplete?: () => void;
 }
 
 export interface PhantomPos {
-  x: number;         // viewport X (px)
-  y: number;         // viewport Y (px)
+  x: number;
+  y: number;
   isClicking: boolean;
 }
 
@@ -55,7 +61,6 @@ interface AutopilotGameState {
   phase: AutopilotGamePhase;
   targetTaps: number;
   tapCount: number;
-  sessionSummary: SessionSummary | null;
   level: number;
   levelCount: number;
 }
@@ -78,7 +83,6 @@ export function useAutopilot({
 
   const isActiveRef = useRef(false);
   const timersRef = useRef<number[]>([]);
-  // Always-current snapshot — read inside scheduled callbacks
   const stateRef = useRef(gameState);
   stateRef.current = gameState;
 
@@ -87,7 +91,6 @@ export function useAutopilot({
     timersRef.current = [];
   }
 
-  /** Schedule a callback only if autopilot is still active */
   function after(ms: number, fn: () => void): void {
     const t = window.setTimeout(() => {
       if (!isActiveRef.current) return;
@@ -111,10 +114,10 @@ export function useAutopilot({
     window.setTimeout(() => {
       if (!isActiveRef.current) return;
       setPhantomPos(prev => prev ? { ...prev, isClicking: false } : null);
-    }, 120);
+    }, 130);
   }
 
-  // ─── Phase handlers ──────────────────────────────────────────────────────
+  // ── Phase handlers ────────────────────────────────────────────────────────
 
   function scheduleTaps(targetCount: number, alreadyDone: number) {
     const remaining = Math.max(0, targetCount - alreadyDone);
@@ -128,13 +131,11 @@ export function useAutopilot({
         const normY = 0.15 + Math.random() * 0.65;
         const screen = canvasToScreen(normX, normY);
         if (screen) moveHand(screen.x, screen.y);
-
-        // Short lead-up then click
         window.setTimeout(() => {
           if (!isActiveRef.current) return;
           if (screen) clickAt(screen.x, screen.y);
           callbacksRef.current?.simulateTap(normX, normY);
-        }, 90);
+        }, 100);
       });
       delay += rand(T.TAP_BETWEEN);
     }
@@ -146,8 +147,7 @@ export function useAutopilot({
     const digits = String(answer).split("");
     let delay = rand(T.READ_DELAY);
 
-    // Preview: move hand toward first digit
-    after(delay - 150, () => {
+    after(delay - 200, () => {
       const rect = getKeyRect(digits[0]);
       if (rect) moveHand(rect.left + rect.width / 2, rect.top + rect.height / 2);
     });
@@ -164,7 +164,6 @@ export function useAutopilot({
       delay += rand(T.KEY_BETWEEN);
     }
 
-    // Submit
     after(delay + rand(T.PRE_SUBMIT), () => {
       const rect = getKeyRect("submit");
       if (rect) {
@@ -176,34 +175,75 @@ export function useAutopilot({
         if (!isActiveRef.current) return;
         callbacksRef.current?.submitAnswer();
         setPhantomPos(null);
-      }, 130);
+      }, 140);
     });
   }
 
-  function scheduleLevelEnd(summary: SessionSummary) {
-    // Auto-email
-    after(rand(T.EMAIL_DELAY), () => {
-      callbacksRef.current?.sendEmail(summary, autopilotEmail).catch((err: unknown) => {
-        console.warn("[Autopilot] Email failed:", err);
-      });
+  function scheduleLevelEnd() {
+    const email = autopilotEmail;
+    let delay = rand(T.EMAIL_CLICK);
+
+    // Move hand toward email input
+    after(delay - 400, () => {
+      const rect = getKeyRect("email-input");
+      if (rect) moveHand(rect.left + rect.width / 2, rect.top + rect.height / 2);
     });
 
-    // Auto-proceed: go to next level, or halt at the final level
-    after(rand(T.END_PAUSE), () => {
+    // Click email input to focus it
+    after(delay, () => {
+      const rect = getKeyRect("email-input");
+      if (rect) clickAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      // Clear any existing value first
+      callbacksRef.current?.emailModalControls?.current?.setEmail?.("");
+    });
+    delay += 300;
+
+    // Type email address character by character
+    for (const ch of email) {
+      const cd = delay;
+      const c = ch;
+      after(cd, () => {
+        const rect = getKeyRect("email-input");
+        if (rect) moveHand(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        callbacksRef.current?.emailModalControls?.current?.appendChar?.(c);
+      });
+      delay += rand(T.EMAIL_CHAR);
+    }
+
+    // Pause, move to send button
+    delay += rand(T.SEND_PAUSE);
+    after(delay - 400, () => {
+      const rect = getKeyRect("email-send");
+      if (rect) moveHand(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    });
+
+    // Click send
+    after(delay, () => {
+      const rect = getKeyRect("email-send");
+      if (rect) clickAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      window.setTimeout(() => {
+        if (!isActiveRef.current) return;
+        callbacksRef.current?.emailModalControls?.current?.triggerSend?.();
+        setPhantomPos(null);
+      }, 140);
+    });
+
+    // Auto-proceed after send
+    delay += rand(T.END_PAUSE);
+    after(delay, () => {
       const { level, levelCount } = stateRef.current;
       if (level < levelCount) {
         callbacksRef.current?.goNextLevel();
       } else {
-        // Final level complete — stop autopilot and let the modal sit
+        // Final level — halt autopilot, leave modal visible
         isActiveRef.current = false;
         setIsActive(false);
-        setPhantomPos(null);
         callbacksRef.current?.onAutopilotComplete?.();
       }
     });
   }
 
-  // ─── Main effect: react to phase changes ─────────────────────────────────
+  // ── React to phase changes ────────────────────────────────────────────────
 
   useEffect(() => {
     if (!isActive) {
@@ -213,7 +253,7 @@ export function useAutopilot({
     }
     clearTimers();
 
-    const { phase, targetTaps, tapCount, sessionSummary } = stateRef.current;
+    const { phase, targetTaps, tapCount } = stateRef.current;
 
     switch (phase) {
       case "tapping":
@@ -223,16 +263,15 @@ export function useAutopilot({
         scheduleAnswer(targetTaps);
         break;
       case "feedback":
-        // Let the game run its 1200ms feedback window naturally
         break;
       case "levelComplete":
-        if (sessionSummary) scheduleLevelEnd(sessionSummary);
+        scheduleLevelEnd();
         break;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, gameState.phase]);
 
-  // ─── Controls ────────────────────────────────────────────────────────────
+  // ── Controls ──────────────────────────────────────────────────────────────
 
   const activate = useCallback(() => {
     isActiveRef.current = true;

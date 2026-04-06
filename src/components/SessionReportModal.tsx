@@ -1,9 +1,10 @@
 // src/components/SessionReportModal.tsx
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useIsMobileLandscape } from "../hooks/useMediaQuery";
 import type { SessionSummary } from "../report/sessionLog";
 import { emailReport, shareReport } from "../report/shareReport";
+import type { ModalAutopilotControls } from "../hooks/useAutopilot";
 
 const EGGS_PER_LEVEL = 3;
 const EGG_INDICES = Array.from({ length: EGGS_PER_LEVEL }, (_, i) => i);
@@ -11,9 +12,11 @@ const EGG_INDICES = Array.from({ length: EGGS_PER_LEVEL }, (_, i) => i);
 function LevelCompleteReportActions({
   summary,
   isMobileLandscape,
+  autopilotControlsRef,
 }: {
   summary: SessionSummary;
   isMobileLandscape: boolean;
+  autopilotControlsRef?: React.MutableRefObject<ModalAutopilotControls | null>;
 }) {
   const [generating, setGenerating] = useState(false);
   const [shareEmail, setShareEmail] = useState("");
@@ -22,16 +25,8 @@ function LevelCompleteReportActions({
   const totalEggs = summary.normalEggs + summary.monsterEggs;
   const canEmailReport = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shareEmail.trim());
 
-  async function handleShare() {
-    setGenerating(true);
-    try {
-      await shareReport(summary);
-    } catch (error) {
-      console.error("Report share failed:", error);
-    } finally {
-      setGenerating(false);
-    }
-  }
+  // Ref so autopilot always calls the latest handleEmailSend
+  const handleEmailSendRef = useRef<() => void>(() => {});
 
   async function handleEmailSend() {
     if (!canEmailReport || generating) return;
@@ -47,6 +42,42 @@ function LevelCompleteReportActions({
       setEmailFeedback(
         error instanceof Error ? error.message : "Failed to send report.",
       );
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  handleEmailSendRef.current = handleEmailSend;
+
+  // Expose controls to autopilot
+  useEffect(() => {
+    if (!autopilotControlsRef) return;
+    autopilotControlsRef.current = {
+      appendChar: (ch) => {
+        setShareEmail(prev => prev + ch);
+        setEmailFeedback(null);
+        setEmailError(false);
+      },
+      setEmail: (v) => {
+        setShareEmail(v);
+        setEmailFeedback(null);
+        setEmailError(false);
+      },
+      triggerSend: () => handleEmailSendRef.current(),
+    };
+    return () => {
+      if (autopilotControlsRef) autopilotControlsRef.current = null;
+    };
+  // autopilotControlsRef is a stable ref object — only run on mount/unmount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleShare() {
+    setGenerating(true);
+    try {
+      await shareReport(summary);
+    } catch (error) {
+      console.error("Report share failed:", error);
     } finally {
       setGenerating(false);
     }
@@ -99,6 +130,7 @@ function LevelCompleteReportActions({
         </button>
         <input
           type="email"
+          data-autopilot-key="email-input"
           value={shareEmail}
           onChange={(event) => {
             setShareEmail(event.target.value);
@@ -112,6 +144,7 @@ function LevelCompleteReportActions({
         />
         <button
           type="button"
+          data-autopilot-key="email-send"
           onClick={handleEmailSend}
           disabled={!canEmailReport || generating}
           className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/25 bg-cyan-400 text-slate-950 transition-opacity disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 disabled:opacity-100"
@@ -138,20 +171,12 @@ interface Props {
   level: number;
   onClose: () => void;
   onNextLevel?: () => void;
-  /** When set (autopilot mode), auto-send email to this address on mount */
-  autopilotEmail?: string;
+  /** When provided (autopilot mode), exposes email controls to the autopilot engine */
+  autopilotControlsRef?: React.MutableRefObject<ModalAutopilotControls | null>;
 }
 
-export default function SessionReportModal({ summary, level, onClose, onNextLevel, autopilotEmail }: Props) {
+export default function SessionReportModal({ summary, level, onClose, onNextLevel, autopilotControlsRef }: Props) {
   const isMobileLandscape = useIsMobileLandscape();
-
-  // Autopilot: auto-send email on mount (the timing is controlled by the autopilot engine;
-  // this is a safety net in case the engine fires the modal before scheduling the email)
-  useEffect(() => {
-    if (!autopilotEmail) return;
-    // Mark the email input in the report actions so it shows as "sent"
-    // The actual email is sent by the autopilot hook directly via emailReport()
-  }, [autopilotEmail, summary]);
 
   return (
     <div
@@ -214,6 +239,7 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
         <LevelCompleteReportActions
           summary={summary}
           isMobileLandscape={isMobileLandscape}
+          autopilotControlsRef={autopilotControlsRef}
         />
 
         <div className="mt-6 flex flex-col items-center gap-3">

@@ -7,11 +7,10 @@ import TutorialHint from "../components/TutorialHint";
 import { isMuted, playCorrect, playLevelComplete, playRipple, playWrong, shuffleMusic, startMusic, toggleMute } from "../sound";
 import { getRainbowColor, makeRound, ripplePitch } from "../game/rippleGame";
 import { startSession, startQuestionTimer, logAttempt, buildSummary } from "../report/sessionLog";
-import { emailReport } from "../report/shareReport";
 import type { SessionSummary, RipplePosition } from "../report/sessionLog";
 import { useCheatCodes } from "../hooks/useCheatCode";
 import { useAutopilot } from "../hooks/useAutopilot";
-import type { AutopilotCallbacks } from "../hooks/useAutopilot";
+import type { AutopilotCallbacks, ModalAutopilotControls } from "../hooks/useAutopilot";
 
 interface Ripple {
   id: number;
@@ -261,10 +260,12 @@ export default function RippleScreen() {
   // ── Autopilot setup ──────────────────────────────────────────────────────
 
   const autopilotCallbacksRef = useRef<AutopilotCallbacks | null>(null);
+  // Ref populated by SessionReportModal when it mounts, cleared on unmount
+  const modalControlsRef = useRef<ModalAutopilotControls | null>(null);
 
   const { isActive: isAutopilot, activate: activateAutopilot, deactivate: deactivateAutopilot, phantomPos } =
     useAutopilot({
-      gameState: { phase, targetTaps, tapCount, sessionSummary, level, levelCount: LEVEL_COUNT },
+      gameState: { phase, targetTaps, tapCount, level, levelCount: LEVEL_COUNT },
       callbacksRef: autopilotCallbacksRef,
       canvasRef,
       autopilotEmail: AUTOPILOT_EMAIL,
@@ -278,7 +279,7 @@ export default function RippleScreen() {
     goNextLevel: handleNextLevel,
     playAgain: handleReportClose,
     restartAll: handleRestart,
-    sendEmail: (summary, email) => emailReport(summary, email),
+    emailModalControls: modalControlsRef,
     onAutopilotComplete: deactivateAutopilot,
   };
 
@@ -368,7 +369,7 @@ export default function RippleScreen() {
         onRestart={handleRestart}
         onCapture={IS_LOCALHOST_DEV ? handleCaptureScene : undefined}
         keypadValue={calcValue}
-        onKeypadChange={phase === "answering" ? setCalcValue : undefined}
+        onKeypadChange={setCalcValue}
         onKeypadSubmit={phase === "answering" ? () => handleKeypadSubmit() : undefined}
         canSubmit={phase === "answering" && calcValue.length > 0}
         question={questionText}
@@ -443,7 +444,7 @@ export default function RippleScreen() {
             level={level}
             onClose={handleReportClose}
             onNextLevel={level < LEVEL_COUNT ? handleNextLevel : undefined}
-            autopilotEmail={isAutopilot ? AUTOPILOT_EMAIL : undefined}
+            autopilotControlsRef={isAutopilot ? modalControlsRef : undefined}
           />
         )}
       </GameLayout>
