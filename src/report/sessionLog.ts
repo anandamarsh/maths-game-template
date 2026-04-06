@@ -9,7 +9,7 @@ export interface RipplePosition {
 export interface QuestionAttempt {
   questionNumber: number;
   prompt: string;
-  level: 1 | 2 | 3;
+  level: 1 | 2;
   correctAnswer: number;
   childAnswer: number | null;
   isCorrect: boolean;
@@ -21,7 +21,7 @@ export interface QuestionAttempt {
 
 export interface SessionSummary {
   playerName: string;
-  level: 1 | 2 | 3;
+  level: 1 | 2;
   date: string;
   startTime: number;
   endTime: number;
@@ -66,7 +66,7 @@ export function logAttempt(attempt: Omit<QuestionAttempt, "questionNumber" | "ti
 
 export function buildSummary(opts: {
   playerName: string;
-  level: 1 | 2 | 3;
+  level: 1 | 2;
   normalEggs: number;
   monsterEggs: number;
   levelCompleted: boolean;

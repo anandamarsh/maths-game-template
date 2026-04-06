@@ -17,7 +17,7 @@ interface Ripple {
 
 const RIPPLE_DURATION_MS = 900;
 const EGGS_PER_ROUND = 3;     // 3 taps per round, each tap = 1 egg
-const LEVEL_COUNT = 3;
+const LEVEL_COUNT = 2;
 const IS_LOCALHOST_DEV = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
 type GamePhase = "tapping" | "answering" | "feedback" | "levelComplete";
@@ -27,7 +27,7 @@ export default function RippleScreen() {
   const [calcValue, setCalcValue] = useState("");
   const [muted, setMuted] = useState(isMuted());
   const [showTutorial, setShowTutorial] = useState(true);
-  const [level, setLevel] = useState<1 | 2 | 3>(1);
+  const [level, setLevel] = useState<1 | 2>(1);
   const [unlockedLevel, setUnlockedLevel] = useState(1);
 
   // Game state
@@ -54,7 +54,7 @@ export default function RippleScreen() {
     }
   }
 
-  function startNewRound(lv: 1 | 2 | 3) {
+  function startNewRound(lv: 1 | 2) {
     const round = makeRound(lv);
     roundRef.current = round;
     setTargetTaps(round.target);
@@ -80,7 +80,7 @@ export default function RippleScreen() {
   }
 
   function handleLevelSelect(lv: number) {
-    const l = lv as 1 | 2 | 3;
+    const l = lv as 1 | 2;
     setLevel(l);
     setRipples([]);
     setEggsCollected(0);
@@ -271,7 +271,7 @@ export default function RippleScreen() {
   }
 
   function handleNextLevel() {
-    const next = Math.min(level + 1, LEVEL_COUNT) as 1 | 2 | 3;
+    const next = Math.min(level + 1, LEVEL_COUNT) as 1 | 2;
     setLevel(next);
     setSessionSummary(null);
     setPhase("tapping");

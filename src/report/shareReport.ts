@@ -23,13 +23,6 @@ const CURRICULUM_BY_LEVEL = {
     syllabusUrl:
       "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=6",
   },
-  3: {
-    stageLabel: "Early Stage 1 (Kindergarten) NSW Curriculum",
-    code: "MAe-1WM",
-    description: "Demonstrates and describes counting sequences.",
-    syllabusUrl:
-      "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=6",
-  },
 } as const;
 
 function getReportFileName(summary: SessionSummary): string {

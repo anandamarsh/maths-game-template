@@ -6,7 +6,7 @@
 //   - Export a function to generate a new round from a level
 //   - Export any helpers the screen needs
 
-export type Level = 1 | 2 | 3;
+export type Level = 1 | 2;
 
 export interface RoundConfig {
   level: Level;
@@ -21,9 +21,8 @@ export interface RoundConfig {
 }
 
 const LEVEL_CONFIG: Record<Level, { min: number; max: number; color: string }> = {
-  1: { min: 3, max: 5,  color: "#67e8f9" }, // cyan
-  2: { min: 6, max: 9,  color: "#fbbf24" }, // gold
-  3: { min: 10, max: 15, color: "#a78bfa" }, // violet
+  1: { min: 3, max: 5, color: "#67e8f9" }, // cyan
+  2: { min: 6, max: 9, color: "#fbbf24" }, // gold
 };
 
 export function makeRound(level: Level): RoundConfig {
@@ -47,7 +46,7 @@ export function ripplePitch(normX: number, normY: number): number {
   return scale[idx] * pitchVariance;
 }
 
-/** Rainbow colours for level 3 */
+/** Rainbow palette reused for ripple feedback */
 const RAINBOW = ["#f87171", "#fb923c", "#fbbf24", "#a3e635", "#34d399", "#67e8f9", "#a78bfa", "#f472b6"];
 
 export function getRainbowColor(tapCount: number): string {
