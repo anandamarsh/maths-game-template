@@ -44,6 +44,7 @@ const en: Translations = {
   "game.correct": "Correct!",
   "game.wrongAnswer": "Wrong! It was {answer}",
   "game.levelComplete": "Level Complete!",
+  "game.entryPrompt": "How many ripples did you make?",
   "game.tryOnYourOwn": "Try on your own",
   "game.tapAnywhere": "Tap anywhere!",
 
@@ -70,6 +71,8 @@ const en: Translations = {
   "pdf.givenAnswer": "Given Answer: {value}",
   "pdf.correctAnswer": "Correct answer: {value}",
   "pdf.rippleCount": "{count} ripple(s)",
+  "pdf.durationSeconds": "{seconds}s",
+  "pdf.durationMinutesSeconds": "{minutes}m {seconds}s",
   "pdf.encourage90": "Amazing work! You're a counting champion!",
   "pdf.encourage70": "Great job! You're getting really good at this!",
   "pdf.encourage50": "Nice effort! Keep practising and you'll be a pro!",
@@ -89,12 +92,17 @@ const en: Translations = {
   "email.notConfigured": "Email service is not configured.",
   "email.sendFailed": "Report email could not be sent.",
 
+  // Curriculum
+  "curriculum.stageEarlyStage1": "Early Stage 1 (Kindergarten) NSW Curriculum",
+  "curriculum.outcomeMae1wm": "Demonstrates and describes counting sequences",
+
   // Language switcher
   "lang.label": "Language",
   "lang.en": "English",
   "lang.zh": "Chinese",
   "lang.es": "Spanish",
   "lang.ru": "Russian",
+  "lang.hi": "Hindi",
   "lang.other": "Other...",
   "lang.translating": "Translating...",
   "lang.translateFail": "Translation failed.",

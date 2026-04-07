@@ -44,6 +44,7 @@ const zh: Translations = {
   "game.correct": "正确！",
   "game.wrongAnswer": "错误！正确答案是 {answer}",
   "game.levelComplete": "关卡完成！",
+  "game.entryPrompt": "你制造了多少个涟漪？",
   "game.tryOnYourOwn": "自己试一试",
   "game.tapAnywhere": "点击任意位置！",
 
@@ -70,6 +71,8 @@ const zh: Translations = {
   "pdf.givenAnswer": "回答：{value}",
   "pdf.correctAnswer": "正确答案：{value}",
   "pdf.rippleCount": "{count} 个涟漪",
+  "pdf.durationSeconds": "{seconds}秒",
+  "pdf.durationMinutesSeconds": "{minutes}分 {seconds}秒",
   "pdf.encourage90": "太棒了！你是计数冠军！",
   "pdf.encourage70": "做得好！你越来越厉害了！",
   "pdf.encourage50": "不错的尝试！继续练习你会成为高手！",
@@ -89,12 +92,17 @@ const zh: Translations = {
   "email.notConfigured": "邮件服务未配置。",
   "email.sendFailed": "报告邮件发送失败。",
 
+  // Curriculum
+  "curriculum.stageEarlyStage1": "新南威尔士州课程早期阶段 1（幼儿园）",
+  "curriculum.outcomeMae1wm": "展示并描述计数顺序",
+
   // Language switcher
   "lang.label": "语言",
   "lang.en": "English",
   "lang.zh": "中文",
   "lang.es": "Español",
   "lang.ru": "Русский",
+  "lang.hi": "हिन्दी",
   "lang.other": "其他...",
   "lang.translating": "翻译中...",
   "lang.translateFail": "翻译失败。",

@@ -46,6 +46,7 @@ export type Translations = {
   "game.correct": string;
   "game.wrongAnswer": string;
   "game.levelComplete": string;
+  "game.entryPrompt": string;
   "game.tryOnYourOwn": string;
   "game.tapAnywhere": string;
 
@@ -72,6 +73,8 @@ export type Translations = {
   "pdf.givenAnswer": string;
   "pdf.correctAnswer": string;
   "pdf.rippleCount": string;
+  "pdf.durationSeconds": string;
+  "pdf.durationMinutesSeconds": string;
   "pdf.encourage90": string;
   "pdf.encourage70": string;
   "pdf.encourage50": string;
@@ -91,12 +94,17 @@ export type Translations = {
   "email.notConfigured": string;
   "email.sendFailed": string;
 
+  // Curriculum
+  "curriculum.stageEarlyStage1": string;
+  "curriculum.outcomeMae1wm": string;
+
   // Language switcher
   "lang.label": string;
   "lang.en": string;
   "lang.zh": string;
   "lang.es": string;
   "lang.ru": string;
+  "lang.hi": string;
   "lang.other": string;
   "lang.translating": string;
   "lang.translateFail": string;

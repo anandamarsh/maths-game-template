@@ -8,16 +8,26 @@ import en from "./en";
 import zh from "./zh";
 import es from "./es";
 import ru from "./ru";
+import hi from "./hi";
 
 // --- Built-in locale map ---
 
-export const BUILT_IN_LOCALES: Record<string, Translations> = { en, zh, es, ru };
+export const BUILT_IN_LOCALES: Record<string, Translations> = { en, zh, es, ru, hi };
 
 export const LOCALE_NAMES: Record<string, string> = {
   en: "English",
   zh: "中文",
   es: "Español",
   ru: "Русский",
+  hi: "हिन्दी",
+};
+
+const INTL_LOCALE_MAP: Record<string, string> = {
+  en: "en-AU",
+  zh: "zh-CN",
+  es: "es-ES",
+  ru: "ru-RU",
+  hi: "hi-IN",
 };
 
 const STORAGE_KEY = "lang";
@@ -76,6 +86,10 @@ export function getCustomLangs(): Record<string, string> {
 
 export function cacheTranslation(locale: string, translations: Translations) {
   localStorage.setItem(CACHE_PREFIX + locale, JSON.stringify(translations));
+}
+
+export function getIntlLocale(locale: string): string {
+  return INTL_LOCALE_MAP[locale] || locale || "en-AU";
 }
 
 // --- React Context ---

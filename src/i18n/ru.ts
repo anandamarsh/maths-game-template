@@ -44,6 +44,7 @@ const ru: Translations = {
   "game.correct": "Правильно!",
   "game.wrongAnswer": "Неправильно! Ответ: {answer}",
   "game.levelComplete": "Уровень пройден!",
+  "game.entryPrompt": "Сколько кругов вы создали?",
   "game.tryOnYourOwn": "Попробуйте сами",
   "game.tapAnywhere": "Нажмите куда-нибудь!",
 
@@ -70,6 +71,8 @@ const ru: Translations = {
   "pdf.givenAnswer": "Данный ответ: {value}",
   "pdf.correctAnswer": "Правильный ответ: {value}",
   "pdf.rippleCount": "{count} круг(ов)",
+  "pdf.durationSeconds": "{seconds} с",
+  "pdf.durationMinutesSeconds": "{minutes} мин {seconds} с",
   "pdf.encourage90": "Потрясающе! Ты чемпион по счёту!",
   "pdf.encourage70": "Отличная работа! Ты становишься всё лучше!",
   "pdf.encourage50": "Хорошая попытка! Продолжай тренироваться!",
@@ -89,12 +92,17 @@ const ru: Translations = {
   "email.notConfigured": "Почтовый сервис не настроен.",
   "email.sendFailed": "Не удалось отправить отчёт по email.",
 
+  // Curriculum
+  "curriculum.stageEarlyStage1": "Учебная программа NSW, ранний этап 1 (Kindergarten)",
+  "curriculum.outcomeMae1wm": "Демонстрирует и описывает последовательности счёта",
+
   // Language switcher
   "lang.label": "Язык",
   "lang.en": "English",
   "lang.zh": "中文",
   "lang.es": "Español",
   "lang.ru": "Русский",
+  "lang.hi": "हिन्दी",
   "lang.other": "Другой...",
   "lang.translating": "Перевод...",
   "lang.translateFail": "Ошибка перевода.",

@@ -44,6 +44,7 @@ const es: Translations = {
   "game.correct": "¡Correcto!",
   "game.wrongAnswer": "¡Incorrecto! Era {answer}",
   "game.levelComplete": "¡Nivel completado!",
+  "game.entryPrompt": "¿Cuántas ondas hiciste?",
   "game.tryOnYourOwn": "Inténtalo tú mismo",
   "game.tapAnywhere": "¡Toca en cualquier lugar!",
 
@@ -70,6 +71,8 @@ const es: Translations = {
   "pdf.givenAnswer": "Respuesta dada: {value}",
   "pdf.correctAnswer": "Respuesta correcta: {value}",
   "pdf.rippleCount": "{count} onda(s)",
+  "pdf.durationSeconds": "{seconds} s",
+  "pdf.durationMinutesSeconds": "{minutes} min {seconds} s",
   "pdf.encourage90": "¡Increíble! ¡Eres un campeón del conteo!",
   "pdf.encourage70": "¡Buen trabajo! ¡Cada vez lo haces mejor!",
   "pdf.encourage50": "¡Buen esfuerzo! ¡Sigue practicando y serás un experto!",
@@ -89,12 +92,17 @@ const es: Translations = {
   "email.notConfigured": "El servicio de correo no está configurado.",
   "email.sendFailed": "No se pudo enviar el correo del informe.",
 
+  // Curriculum
+  "curriculum.stageEarlyStage1": "Currículo de NSW de Etapa Inicial 1 (Kindergarten)",
+  "curriculum.outcomeMae1wm": "Demuestra y describe secuencias de conteo",
+
   // Language switcher
   "lang.label": "Idioma",
   "lang.en": "English",
   "lang.zh": "中文",
   "lang.es": "Español",
   "lang.ru": "Русский",
+  "lang.hi": "हिन्दी",
   "lang.other": "Otro...",
   "lang.translating": "Traduciendo...",
   "lang.translateFail": "Error en la traducción.",
