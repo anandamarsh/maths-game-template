@@ -7,7 +7,7 @@ import type { SessionSummary } from "../report/sessionLog";
 import { emailReport, shareReport } from "../report/shareReport";
 import type { ModalAutopilotControls } from "../hooks/useAutopilot";
 
-const EGGS_PER_LEVEL = 3;
+const EGGS_PER_LEVEL = 2;
 const EGG_INDICES = Array.from({ length: EGGS_PER_LEVEL }, (_, i) => i);
 
 function LevelCompleteReportActions({

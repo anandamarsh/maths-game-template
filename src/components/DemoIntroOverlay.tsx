@@ -1,55 +1,39 @@
-// src/components/DemoIntroOverlay.tsx — Animated intro slides for demo video recording
+// src/components/DemoIntroOverlay.tsx — Intro/outro slides for demo video recording
 
 import { useEffect, useState } from "react";
 
-interface Slide {
-  title: string;
-  subtitle?: string;
-  duration: number; // ms to show this slide
-}
+export type SlideType = "intro" | "outro";
 
 interface Props {
-  slides: Slide[];
+  type: SlideType;
   onComplete: () => void;
 }
 
-export default function DemoIntroOverlay({ slides, onComplete }: Props) {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [fadeState, setFadeState] = useState<"in" | "visible" | "out">("in");
+const INTRO_DURATION = 5500;
+const OUTRO_DURATION = 4500;
+const FADE_MS = 600;
+
+export default function DemoIntroOverlay({ type, onComplete }: Props) {
+  const [opacity, setOpacity] = useState(0);
 
   useEffect(() => {
-    if (currentSlide >= slides.length) {
-      onComplete();
-      return;
-    }
-
-    const slide = slides[currentSlide];
-
     // Fade in
-    setFadeState("in");
-    const fadeInTimer = window.setTimeout(() => setFadeState("visible"), 50);
+    const fadeInTimer = window.setTimeout(() => setOpacity(1), 50);
 
-    // Start fade out before slide ends
-    const fadeOutTimer = window.setTimeout(() => {
-      setFadeState("out");
-    }, slide.duration - 600);
+    const duration = type === "intro" ? INTRO_DURATION : OUTRO_DURATION;
 
-    // Advance to next slide
-    const advanceTimer = window.setTimeout(() => {
-      setCurrentSlide((s) => s + 1);
-    }, slide.duration);
+    // Start fade out
+    const fadeOutTimer = window.setTimeout(() => setOpacity(0), duration - FADE_MS);
+
+    // Signal complete
+    const completeTimer = window.setTimeout(onComplete, duration);
 
     return () => {
       window.clearTimeout(fadeInTimer);
       window.clearTimeout(fadeOutTimer);
-      window.clearTimeout(advanceTimer);
+      window.clearTimeout(completeTimer);
     };
-  }, [currentSlide, slides, onComplete]);
-
-  if (currentSlide >= slides.length) return null;
-
-  const slide = slides[currentSlide];
-  const opacity = fadeState === "in" ? 0 : fadeState === "out" ? 0 : 1;
+  }, [type, onComplete]);
 
   return (
     <div
@@ -63,13 +47,13 @@ export default function DemoIntroOverlay({ slides, onComplete }: Props) {
         justifyContent: "center",
         background: "radial-gradient(ellipse at center, #0f172a 0%, #020617 100%)",
         opacity,
-        transition: "opacity 0.5s ease-in-out",
+        transition: `opacity ${FADE_MS}ms ease-in-out`,
         pointerEvents: "all",
       }}
     >
       {/* Decorative stars */}
       <svg
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.4, pointerEvents: "none" }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.35, pointerEvents: "none" }}
       >
         {[
           [10, 15], [25, 40], [40, 10], [55, 30], [72, 18], [88, 42], [92, 8],
@@ -80,77 +64,148 @@ export default function DemoIntroOverlay({ slides, onComplete }: Props) {
         ))}
       </svg>
 
-      {/* Icon */}
-      <div style={{ marginBottom: "2rem" }}>
-        <img
-          src="/favicon.svg"
-          alt=""
-          width="120"
-          height="120"
-          style={{
-            filter: "drop-shadow(0 0 24px rgba(103,232,249,0.5))",
-          }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-      </div>
+      {type === "intro" ? <IntroContent /> : <OutroContent />}
+    </div>
+  );
+}
+
+function IntroContent() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.8rem", padding: "0 2rem", maxWidth: 720 }}>
+      {/* Game icon */}
+      <img
+        src="/favicon.svg"
+        alt=""
+        width="100"
+        height="100"
+        style={{ filter: "drop-shadow(0 0 24px rgba(103,232,249,0.5))", marginBottom: "0.5rem" }}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+      />
 
       {/* Title */}
-      <h1
-        style={{
-          fontSize: "clamp(2.5rem, 6vw, 4.5rem)",
-          fontWeight: 900,
-          color: "#fde047",
-          textTransform: "uppercase",
-          letterSpacing: "0.15em",
-          textShadow: "0 0 40px rgba(253,224,71,0.5), 0 4px 8px rgba(0,0,0,0.5)",
-          textAlign: "center",
-          margin: 0,
-          padding: "0 2rem",
-          lineHeight: 1.2,
-        }}
-      >
-        {slide.title}
+      <h1 style={{
+        fontSize: "clamp(2.5rem, 6vw, 4rem)",
+        fontWeight: 900,
+        color: "#fde047",
+        textTransform: "uppercase",
+        letterSpacing: "0.15em",
+        textShadow: "0 0 40px rgba(253,224,71,0.5), 0 4px 8px rgba(0,0,0,0.5)",
+        textAlign: "center",
+        margin: 0,
+        lineHeight: 1.1,
+      }}>
+        Ripple Touch
       </h1>
 
       {/* Subtitle */}
-      {slide.subtitle && (
-        <p
-          style={{
-            fontSize: "clamp(1rem, 2.5vw, 1.6rem)",
-            fontWeight: 600,
-            color: "#67e8f9",
-            textAlign: "center",
-            margin: "1.2rem 0 0",
-            padding: "0 2rem",
-            maxWidth: "700px",
-            lineHeight: 1.5,
-            textShadow: "0 0 20px rgba(103,232,249,0.3)",
-          }}
-        >
-          {slide.subtitle}
-        </p>
-      )}
+      <p style={{
+        fontSize: "clamp(1.1rem, 2.5vw, 1.5rem)",
+        fontWeight: 600,
+        color: "#67e8f9",
+        textAlign: "center",
+        margin: 0,
+        textShadow: "0 0 20px rgba(103,232,249,0.3)",
+      }}>
+        Counting &amp; Number Recognition
+      </p>
 
-      {/* Slide indicator dots */}
-      {slides.length > 1 && (
-        <div style={{ marginTop: "3rem", display: "flex", gap: "0.75rem" }}>
-          {slides.map((_, i) => (
-            <div
-              key={i}
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                background: i === currentSlide ? "#67e8f9" : "rgba(255,255,255,0.2)",
-                boxShadow: i === currentSlide ? "0 0 10px rgba(103,232,249,0.7)" : undefined,
-                transition: "all 0.3s",
-              }}
-            />
-          ))}
-        </div>
-      )}
+      {/* Divider */}
+      <div style={{
+        width: 80,
+        height: 2,
+        background: "linear-gradient(90deg, transparent, rgba(103,232,249,0.5), transparent)",
+        margin: "0.4rem 0",
+      }} />
+
+      {/* Syllabus info */}
+      <p style={{
+        fontSize: "clamp(0.85rem, 1.8vw, 1.05rem)",
+        fontWeight: 600,
+        color: "#a5b4fc",
+        textAlign: "center",
+        margin: 0,
+        lineHeight: 1.4,
+      }}>
+        Early Stage 1 (Kindergarten) — NSW Curriculum
+      </p>
+
+      <p style={{
+        fontSize: "clamp(0.8rem, 1.6vw, 0.95rem)",
+        fontWeight: 500,
+        color: "#94a3b8",
+        textAlign: "center",
+        margin: 0,
+        lineHeight: 1.4,
+      }}>
+        MAe-1WM: Demonstrates and describes counting sequences
+      </p>
+
+      {/* What it teaches */}
+      <p style={{
+        fontSize: "clamp(0.8rem, 1.6vw, 0.95rem)",
+        fontWeight: 400,
+        color: "#cbd5e1",
+        textAlign: "center",
+        margin: "0.3rem 0 0",
+        lineHeight: 1.5,
+        maxWidth: 560,
+      }}>
+        Children learn to count objects and recognise numbers by tapping the screen
+        to create ripples, then counting and entering the total.
+      </p>
+    </div>
+  );
+}
+
+function OutroContent() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.2rem", padding: "0 2rem" }}>
+      {/* Game icon */}
+      <img
+        src="/favicon.svg"
+        alt=""
+        width="80"
+        height="80"
+        style={{ filter: "drop-shadow(0 0 20px rgba(103,232,249,0.5))" }}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+      />
+
+      <p style={{
+        fontSize: "clamp(1.3rem, 3vw, 2rem)",
+        fontWeight: 700,
+        color: "#e2e8f0",
+        textAlign: "center",
+        margin: 0,
+        lineHeight: 1.3,
+      }}>
+        Play this and more games at
+      </p>
+
+      <a
+        href="https://www.seemaths.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          fontSize: "clamp(1.5rem, 4vw, 2.5rem)",
+          fontWeight: 900,
+          color: "#fde047",
+          textDecoration: "none",
+          textAlign: "center",
+          textShadow: "0 0 30px rgba(253,224,71,0.5)",
+          letterSpacing: "0.05em",
+        }}
+      >
+        SeeMaths.com
+      </a>
+
+      <p style={{
+        fontSize: "clamp(0.8rem, 1.5vw, 1rem)",
+        color: "#67e8f9",
+        textAlign: "center",
+        margin: 0,
+      }}>
+        www.seemaths.com
+      </p>
     </div>
   );
 }

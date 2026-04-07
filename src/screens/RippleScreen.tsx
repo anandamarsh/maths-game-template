@@ -23,7 +23,7 @@ interface Ripple {
 }
 
 const RIPPLE_DURATION_MS = 900;
-const EGGS_PER_ROUND = 3;
+const EGGS_PER_ROUND = 2;
 const LEVEL_COUNT = 2;
 const AUTOPILOT_EMAIL = "amarsh.anand@gmail.com";
 const IS_LOCALHOST_DEV = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
@@ -64,36 +64,12 @@ export default function RippleScreen() {
 
   // ── Demo video recorder ──────────────────────────────────────────────────
 
-  const INTRO_SLIDES = [
-    { title: "Ripple Touch", subtitle: "Counting & Number Recognition", duration: 4000 },
-    { title: "How to Play", subtitle: "Tap the screen to create ripples, then count them and enter your answer on the keypad", duration: 5000 },
-    { title: "Watch & Learn!", subtitle: "", duration: 2500 },
-  ];
-
-  const demoRecorderCallbacksRef = useRef({ onStartPlaying: () => {}, ensureUnmuted: () => {} });
-  const { recordingPhase, startRecording, onIntroComplete, stopRecording, isRecording } =
-    useDemoRecorder(demoRecorderCallbacksRef.current);
-
-  // Keep callbacks current
-  demoRecorderCallbacksRef.current = {
-    onStartPlaying: () => {
-      // Reset game to level 1 and start autopilot
-      handleRestart();
-      setAutopilotMode("continuous");
-      setCalcValue("");
-      activateAutopilot();
-    },
-    ensureUnmuted: () => {
-      if (isMuted()) setMuted(toggleMute());
-      ensureMusic();
-    },
-  };
-
-  // Auto-stop recording when autopilot completes (after level complete modal shows for a bit)
-  const isRecordingRef = useRef(false);
-  isRecordingRef.current = isRecording;
-  const stopRecordingRef = useRef(stopRecording);
-  stopRecordingRef.current = stopRecording;
+  const demoRecorderCallbacksRef = useRef({
+    onStartPlaying: () => {},
+    ensureUnmuted: () => {},
+  });
+  const { recordingPhase, isRecording, startRecording, onIntroComplete, showOutro, onOutroComplete } =
+    useDemoRecorder(demoRecorderCallbacksRef);
 
   // Always-current refs for cheat code and autopilot callbacks
   const targetTapsRef = useRef(targetTaps);
@@ -371,7 +347,25 @@ export default function RippleScreen() {
     playAgain: handleReportClose,
     restartAll: handleRestart,
     emailModalControls: modalControlsRef,
-    onAutopilotComplete: deactivateAutopilot,
+    onAutopilotComplete: () => {
+      deactivateAutopilot();
+      // If recording a demo video, show the outro slide
+      if (isRecording) showOutro();
+    },
+  };
+
+  // Wire demo recorder callbacks (need handleRestart & activateAutopilot to exist)
+  demoRecorderCallbacksRef.current = {
+    onStartPlaying: () => {
+      handleRestart();
+      setAutopilotMode("continuous");
+      setCalcValue("");
+      activateAutopilot();
+    },
+    ensureUnmuted: () => {
+      if (isMuted()) setMuted(toggleMute());
+      ensureMusic();
+    },
   };
 
   // ── Cheat codes ──────────────────────────────────────────────────────────
@@ -495,6 +489,8 @@ export default function RippleScreen() {
         onToggleMute={handleToggleMute}
         onRestart={handleRestart}
         onCapture={IS_LOCALHOST_DEV ? handleCaptureScene : undefined}
+        onRecordDemo={IS_LOCALHOST_DEV ? startRecording : undefined}
+        isRecordingDemo={isRecording}
         keypadValue={calcValue}
         onKeypadChange={setCalcValue}
         onKeypadSubmit={phase === "answering" ? () => handleKeypadSubmit() : undefined}
@@ -596,6 +592,32 @@ export default function RippleScreen() {
 
       {/* Phantom hand — fixed overlay, outside GameLayout so it renders above everything */}
       <PhantomHand pos={phantomPos} />
+
+      {/* Demo video recording overlays */}
+      {recordingPhase === "intro" && (
+        <DemoIntroOverlay type="intro" onComplete={onIntroComplete} />
+      )}
+      {recordingPhase === "outro" && (
+        <DemoIntroOverlay type="outro" onComplete={onOutroComplete} />
+      )}
+
+      {/* Recording indicator (pulsing red dot) */}
+      {isRecording && recordingPhase === "playing" && (
+        <div
+          style={{
+            position: "fixed",
+            top: 14,
+            left: 14,
+            zIndex: 9998,
+            width: 12,
+            height: 12,
+            borderRadius: "50%",
+            background: "#ef4444",
+            boxShadow: "0 0 8px rgba(239,68,68,0.7)",
+            animation: "autopilot-blink 1.5s ease-in-out infinite",
+          }}
+        />
+      )}
     </>
   );
 }

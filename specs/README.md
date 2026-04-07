@@ -119,6 +119,7 @@ An interactive maths game framework. Each game has:
 | [i18n](./i18n.md) | `specs/i18n.md` | `i18n/`, `components/LanguageSwitcher.tsx`, `api/translate.ts` |
 | [Social & Comments](./social.md) | `specs/social.md` | `components/Social.tsx` |
 | [Deployment & PWA](./deployment.md) | `specs/deployment.md` | `vite.config.ts`, `vercel.json`, `public/manifest.json` |
+| [Demo Video](./demo-video.md) | `specs/demo-video.md` | `hooks/useDemoRecorder.ts`, `components/DemoIntroOverlay.tsx` |
 
 ---
 

@@ -38,6 +38,9 @@ interface GameLayoutProps {
 
   // Dev-only screenshot capture
   onCapture?: () => void;
+  // Dev-only demo video recording
+  onRecordDemo?: () => void;
+  isRecordingDemo?: boolean;
 
   // Autopilot
   isAutopilot?: boolean;
@@ -69,6 +72,8 @@ export default function GameLayout({
   unlockedLevel,
   onLevelSelect,
   onCapture,
+  onRecordDemo,
+  isRecordingDemo = false,
   isQuestionDemo = false,
   onQuestionDemo,
   forceKeypadExpanded = false,
@@ -172,6 +177,19 @@ export default function GameLayout({
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
+              </svg>
+            </button>
+          )}
+
+          {onRecordDemo && (
+            <button onClick={onRecordDemo} title="Record demo video"
+              className="arcade-button w-10 h-10 flex items-center justify-center p-2"
+              style={isRecordingDemo ? { borderColor: "#ef4444", boxShadow: "0 0 12px rgba(239,68,68,0.5)" } : undefined}>
+              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full"
+                stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="13" height="16" rx="2" />
+                <path d="m22 7-5 3.5V14l5 3.5Z" fill={isRecordingDemo ? "#ef4444" : "none"} stroke={isRecordingDemo ? "#ef4444" : "white"} />
+                {isRecordingDemo && <circle cx="6" cy="8" r="2.5" fill="#ef4444" />}
               </svg>
             </button>
           )}

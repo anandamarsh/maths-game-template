@@ -1,37 +1,37 @@
-// src/hooks/useDemoRecorder.ts — Records a demo video of autopilot gameplay with intro slides
+// src/hooks/useDemoRecorder.ts — Records demo video via getDisplayMedia + MediaRecorder
 
 import { useCallback, useRef, useState } from "react";
 
-export type RecordingPhase = "idle" | "requesting" | "intro" | "playing" | "stopping";
+export type RecordingPhase = "idle" | "requesting" | "intro" | "playing" | "outro" | "stopping";
 
-interface UseDemoRecorderReturn {
-  /** Current phase of the recording flow */
-  recordingPhase: RecordingPhase;
-  /** Start the recording flow (requests tab capture, then shows intro) */
-  startRecording: () => void;
-  /** Called when intro slides finish — starts autopilot gameplay */
-  onIntroComplete: () => void;
-  /** Stop recording and download the video */
-  stopRecording: () => void;
-  /** Whether recording is active (intro or playing) */
-  isRecording: boolean;
+interface Callbacks {
+  /** Called after intro slide completes — should reset game + start autopilot */
+  onStartPlaying: () => void;
+  /** Called to ensure game audio is on for the recording */
+  ensureUnmuted: () => void;
 }
 
-export function useDemoRecorder(callbacks: {
-  onStartPlaying: () => void;
-  ensureUnmuted: () => void;
-}): UseDemoRecorderReturn {
+export function useDemoRecorder(callbacksRef: React.RefObject<Callbacks>) {
   const [recordingPhase, setRecordingPhase] = useState<RecordingPhase>("idle");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
 
+  const cleanup = useCallback(() => {
+    if (streamRef.current) {
+      for (const track of streamRef.current.getTracks()) track.stop();
+      streamRef.current = null;
+    }
+    recorderRef.current = null;
+    chunksRef.current = [];
+    setRecordingPhase("idle");
+  }, []);
+
   const startRecording = useCallback(async () => {
-    if (recordingPhase !== "idle") return;
+    if (recorderRef.current) return; // already recording
     setRecordingPhase("requesting");
 
     try {
-      // Request tab capture with audio
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           displaySurface: "browser",
@@ -47,7 +47,6 @@ export function useDemoRecorder(callbacks: {
       streamRef.current = stream;
       chunksRef.current = [];
 
-      // Use VP9+Opus for good quality, fall back to VP8
       const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
         ? "video/webm;codecs=vp9,opus"
         : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
@@ -56,7 +55,7 @@ export function useDemoRecorder(callbacks: {
 
       const recorder = new MediaRecorder(stream, {
         mimeType,
-        videoBitsPerSecond: 5_000_000, // 5 Mbps for good quality
+        videoBitsPerSecond: 5_000_000,
       });
 
       recorder.ondataavailable = (e) => {
@@ -69,73 +68,79 @@ export function useDemoRecorder(callbacks: {
         cleanup();
       };
 
-      // If user stops sharing via browser UI
+      // If user stops sharing via browser chrome
       stream.getVideoTracks()[0].addEventListener("ended", () => {
         if (recorderRef.current?.state === "recording") {
           recorderRef.current.stop();
         }
-        setRecordingPhase("idle");
+        cleanup();
       });
 
       recorderRef.current = recorder;
-      recorder.start(1000); // collect data every second
+      recorder.start(1000);
 
-      // Ensure game audio is on for the recording
-      callbacks.ensureUnmuted();
+      // Ensure game audio is on
+      callbacksRef.current?.ensureUnmuted();
 
-      // Show intro slides
+      // Show intro slide
       setRecordingPhase("intro");
-    } catch (err) {
-      console.error("Demo recording failed:", err);
-      setRecordingPhase("idle");
+    } catch {
+      cleanup();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recordingPhase]);
+  }, [callbacksRef, cleanup]);
 
+  /** Called when intro slide finishes — transition to gameplay */
   const onIntroComplete = useCallback(() => {
     setRecordingPhase("playing");
-    callbacks.onStartPlaying();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    callbacksRef.current?.onStartPlaying();
+  }, [callbacksRef]);
+
+  /** Called when autopilot finishes final level — show outro slide */
+  const showOutro = useCallback(() => {
+    setRecordingPhase("outro");
   }, []);
 
-  const stopRecording = useCallback(() => {
+  /** Called when outro slide finishes — stop recording and download */
+  const onOutroComplete = useCallback(() => {
+    setRecordingPhase("stopping");
     if (recorderRef.current?.state === "recording") {
-      setRecordingPhase("stopping");
+      recorderRef.current.stop(); // triggers onstop → download → cleanup
+    } else {
+      cleanup();
+    }
+  }, [cleanup]);
+
+  /** Manual cancel */
+  const cancelRecording = useCallback(() => {
+    if (recorderRef.current?.state === "recording") {
+      // Don't download — just stop and clean up
+      recorderRef.current.onstop = () => cleanup();
       recorderRef.current.stop();
     } else {
       cleanup();
-      setRecordingPhase("idle");
     }
-  }, []);
-
-  function cleanup() {
-    if (streamRef.current) {
-      for (const track of streamRef.current.getTracks()) track.stop();
-      streamRef.current = null;
-    }
-    recorderRef.current = null;
-    chunksRef.current = [];
-    setRecordingPhase("idle");
-  }
-
-  function downloadBlob(blob: Blob) {
-    const stamp = new Date().toISOString().slice(0, 16).replace(/[:.]/g, "-");
-    const fileName = `ripple-touch-demo-${stamp}.webm`;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
+  }, [cleanup]);
 
   return {
     recordingPhase,
+    isRecording: recordingPhase !== "idle",
     startRecording,
     onIntroComplete,
-    stopRecording,
-    isRecording: recordingPhase === "intro" || recordingPhase === "playing",
+    showOutro,
+    onOutroComplete,
+    cancelRecording,
   };
+}
+
+function downloadBlob(blob: Blob) {
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:.]/g, "-");
+  const fileName = `ripple-touch-demo-${stamp}.webm`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
