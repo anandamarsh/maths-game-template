@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 import type { SessionSummary, QuestionAttempt } from "./sessionLog";
 import type { TFunction } from "../i18n/types";
 import arialUnicodeUrl from "../assets/fonts/ArialUnicode.ttf?url";
-import { getIntlLocale } from "../i18n";
+import { getLocaleFormat } from "../i18n";
 
 // --- Color palette ---
 
@@ -27,25 +27,28 @@ let pdfFontBinaryPromise: Promise<string> | null = null;
 
 // --- Helpers ---
 
-function formatDuration(ms: number, t: TFunction): string {
+function formatDuration(ms: number, t: TFunction, locale: string): string {
   const totalSec = Math.round(ms / 1000);
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
+  const format = getLocaleFormat(locale);
+  if (format.compactDurationLabels) {
+    const { minute, second } = format.compactDurationLabels;
+    if (min === 0) return `${totalSec}${second}`;
+    return `${min}${minute} ${sec}${second}`;
+  }
   if (min === 0) return t("pdf.durationSeconds", { seconds: totalSec });
   return t("pdf.durationMinutesSeconds", { minutes: min, seconds: sec });
 }
 
 function formatTime(ts: number, locale: string): string {
-  return new Date(ts).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
+  const format = getLocaleFormat(locale);
+  return new Date(ts).toLocaleTimeString(format.intlLocale, format.timeOptions);
 }
 
 function formatDate(iso: string, locale: string): string {
-  return new Date(iso).toLocaleDateString(locale, {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const format = getLocaleFormat(locale);
+  return new Date(iso).toLocaleDateString(format.intlLocale, format.pdfDateOptions);
 }
 
 function arrayBufferToBinaryString(buffer: ArrayBuffer): string {
@@ -231,7 +234,6 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
     putOnlyUsedFonts: true,
   });
   const fontFamily = await ensurePdfFont(doc);
-  const intlLocale = getIntlLocale(locale);
   const pageW = doc.internal.pageSize.getWidth();   // 210
   const pageH = doc.internal.pageSize.getHeight();  // 297
   const margin = 15;
@@ -273,9 +275,9 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
   doc.setFontSize(7.5);
   doc.setFont(fontFamily, "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text(formatDate(summary.date, intlLocale), titleColX, line2Y);
+  doc.text(formatDate(summary.date, locale), titleColX, line2Y);
   doc.text(
-    `${formatTime(summary.startTime, intlLocale)} - ${formatTime(summary.endTime, intlLocale)}`,
+    `${formatTime(summary.startTime, locale)} - ${formatTime(summary.endTime, locale)}`,
     margin + contentW - iconPad, line2Y, { align: "right" }
   );
 
@@ -362,7 +364,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
   doc.setFontSize(15);
   doc.setFont(fontFamily, "bold");
   doc.setTextColor(COLORS.accentPurple);
-  doc.text(formatDuration(summary.endTime - summary.startTime, t), box3X + boxW / 2, curY + 13.5, { align: "center" });
+  doc.text(formatDuration(summary.endTime - summary.startTime, t, locale), box3X + boxW / 2, curY + 13.5, { align: "center" });
 
   curY += boxH + 7;
 
@@ -441,7 +443,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
     doc.text(qLabel, cardLeft + stripeW + 3, curY + 6.8);
 
     // CORRECT / WRONG + time
-    const timeStr = formatDuration(attempt.timeTakenMs, t);
+    const timeStr = formatDuration(attempt.timeTakenMs, t, locale);
     doc.setFontSize(7);
     doc.setFont(fontFamily, "normal");
     const timeW2 = doc.getTextWidth(timeStr);

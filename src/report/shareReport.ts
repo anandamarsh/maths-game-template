@@ -2,7 +2,7 @@
 
 import { generateSessionPdf } from "./generatePdf";
 import type { SessionSummary } from "./sessionLog";
-import { getIntlLocale, getT } from "../i18n";
+import { getLocaleFormat, getT } from "../i18n";
 import type { TFunction } from "../i18n/types";
 
 const SITE_URL = "https://www.seemaths.com";
@@ -35,23 +35,22 @@ function getReportFileName(summary: SessionSummary): string {
 }
 
 function formatSessionDate(timestamp: number, locale: string): string {
-  return new Date(timestamp).toLocaleDateString(locale, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const format = getLocaleFormat(locale);
+  return new Date(timestamp).toLocaleDateString(format.intlLocale, format.emailDateOptions);
 }
 
 function formatSessionTime(timestamp: number, locale: string): string {
-  return new Date(timestamp).toLocaleTimeString(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const format = getLocaleFormat(locale);
+  return new Date(timestamp).toLocaleTimeString(format.intlLocale, format.timeOptions);
 }
 
 function formatDurationMinutes(startTime: number, endTime: number, locale: string): string {
   const minutes = Math.max(1, Math.round((endTime - startTime) / 60000));
-  return new Intl.NumberFormat(locale, {
+  const format = getLocaleFormat(locale);
+  if (format.useCompactDurationInEmail && format.compactDurationLabels) {
+    return `${minutes}${format.compactDurationLabels.minute}`;
+  }
+  return new Intl.NumberFormat(format.intlLocale, {
     style: "unit",
     unit: "minute",
     unitDisplay: "long",
@@ -126,14 +125,13 @@ export async function shareReport(summary: SessionSummary): Promise<boolean> {
 function getEmailMetadata(summary: SessionSummary, t: TFunction, locale: string) {
   const level = (summary.level in CURRICULUM_BY_LEVEL ? summary.level : 1) as keyof typeof CURRICULUM_BY_LEVEL;
   const curriculum = CURRICULUM_BY_LEVEL[level];
-  const intlLocale = getIntlLocale(locale);
   return {
     gameName: GAME_NAME,
     senderName: SENDER_NAME,
     siteUrl: SITE_URL,
-    sessionTime: formatSessionTime(summary.startTime, intlLocale),
-    sessionDate: formatSessionDate(summary.startTime, intlLocale),
-    durationText: formatDurationMinutes(summary.startTime, summary.endTime, intlLocale),
+    sessionTime: formatSessionTime(summary.startTime, locale),
+    sessionDate: formatSessionDate(summary.startTime, locale),
+    durationText: formatDurationMinutes(summary.startTime, summary.endTime, locale),
     stageLabel: t("curriculum.stageEarlyStage1"),
     curriculumCode: curriculum.code,
     curriculumDescription: t("curriculum.outcomeMae1wm"),
