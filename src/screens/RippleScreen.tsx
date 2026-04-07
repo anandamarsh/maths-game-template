@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import html2canvas from "html2canvas";
+import DemoIntroOverlay from "../components/DemoIntroOverlay";
 import GameLayout from "../components/GameLayout";
 import PhantomHand from "../components/PhantomHand";
 import SessionReportModal from "../components/SessionReportModal";
 import TutorialHint from "../components/TutorialHint";
 import { useT } from "../i18n";
+import { useDemoRecorder } from "../hooks/useDemoRecorder";
 import { isMuted, playCorrect, playLevelComplete, playRipple, playWrong, shuffleMusic, startMusic, toggleMute } from "../sound";
 import { getRainbowColor, makeRound, ripplePitch } from "../game/rippleGame";
 import { startSession, startQuestionTimer, logAttempt, buildSummary } from "../report/sessionLog";
@@ -59,6 +61,39 @@ export default function RippleScreen() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const musicStartedRef = useRef(false);
   const roundRef = useRef(makeRound(1));
+
+  // ── Demo video recorder ──────────────────────────────────────────────────
+
+  const INTRO_SLIDES = [
+    { title: "Ripple Touch", subtitle: "Counting & Number Recognition", duration: 4000 },
+    { title: "How to Play", subtitle: "Tap the screen to create ripples, then count them and enter your answer on the keypad", duration: 5000 },
+    { title: "Watch & Learn!", subtitle: "", duration: 2500 },
+  ];
+
+  const demoRecorderCallbacksRef = useRef({ onStartPlaying: () => {}, ensureUnmuted: () => {} });
+  const { recordingPhase, startRecording, onIntroComplete, stopRecording, isRecording } =
+    useDemoRecorder(demoRecorderCallbacksRef.current);
+
+  // Keep callbacks current
+  demoRecorderCallbacksRef.current = {
+    onStartPlaying: () => {
+      // Reset game to level 1 and start autopilot
+      handleRestart();
+      setAutopilotMode("continuous");
+      setCalcValue("");
+      activateAutopilot();
+    },
+    ensureUnmuted: () => {
+      if (isMuted()) setMuted(toggleMute());
+      ensureMusic();
+    },
+  };
+
+  // Auto-stop recording when autopilot completes (after level complete modal shows for a bit)
+  const isRecordingRef = useRef(false);
+  isRecordingRef.current = isRecording;
+  const stopRecordingRef = useRef(stopRecording);
+  stopRecordingRef.current = stopRecording;
 
   // Always-current refs for cheat code and autopilot callbacks
   const targetTapsRef = useRef(targetTaps);
