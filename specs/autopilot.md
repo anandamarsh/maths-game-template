@@ -11,7 +11,8 @@
 
 Plays the game autonomously — tapping the canvas, entering answers, sending the email
 report, and proceeding to the next level — in a loop. Simulates human-like timing with
-randomised delays. Deliberately misses 20% of answers.
+randomised delays. Continuous autopilot may deliberately miss answers; the
+single-question robot demo should always show the correct answer.
 
 Two modes:
 - **`"continuous"`** — plays indefinitely, loops back after final level
@@ -21,7 +22,7 @@ Two modes:
 
 ## Activation
 
-- Cheat code `198081` (on keyboard) → toggles continuous autopilot
+- Cheat code `198081` (hardware keyboard or on-screen keypad digits) → toggles continuous autopilot
 - Cheat code `197879` → shows and submits the correct answer once (not full autopilot)
 - Robot button click when autopilot inactive → starts `"single-question"` mode
 - Robot button click when autopilot active → stops autopilot
@@ -70,7 +71,12 @@ function wrongAnswer(correct: number): number {
 ```
 
 Wrong answers are **genuine misses** — they are logged in the session, counted in
-accuracy, and never self-corrected. This ensures autopilot never achieves 100%.
+accuracy, and never self-corrected. This ensures continuous autopilot never achieves 100%.
+
+Important:
+- Wrong-answer injection applies only to `"continuous"` mode.
+- `"single-question"` mode must always answer correctly because it is the child-facing
+  "show me how" action.
 
 ---
 

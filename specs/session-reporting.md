@@ -200,7 +200,8 @@ export function canNativeShare(): boolean
   curriculumUrl, curriculumIndexUrl,
   reportFileName,
   // i18n pre-translated strings:
-  emailSubject, emailGreeting, emailBody, emailCurriculum, emailRegards,
+  emailSubject, emailGreeting, emailBody, emailBodyHtml,
+  emailCurriculum, emailCurriculumHtml, emailRegards,
 }
 ```
 
@@ -221,10 +222,14 @@ export function canNativeShare(): boolean
 
 **Behavior:**
 - If `emailBody`/`emailCurriculum`/etc. are provided (pre-translated by frontend), uses
-  those strings with HTML-escaped content.
+  those strings.
+- If localized HTML variants are provided, preserves inline `<strong>` and `<a>` formatting
+  while keeping the locale-specific sentence structure.
 - Falls back to English template strings if not provided.
 - Sends via Resend API with PDF as attachment.
 - Returns `{ ok: true }` on success, error object on failure.
+- The local Vite `/api/send-report` route and deployed `api/send-report.ts` handler must
+  remain behaviorally identical.
 
 ---
 
