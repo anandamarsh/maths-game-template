@@ -218,7 +218,7 @@ export default function RippleScreen() {
 
     if (!singleQuestionDemoRef.current) {
       logAttempt({
-        prompt: roundRef.current.entryPrompt,
+        prompt: t("game.entryPrompt"),
         level,
         correctAnswer: correct,
         childAnswer: answer,
@@ -446,7 +446,7 @@ export default function RippleScreen() {
   if (phase === "tapping") {
     questionText = t("game.tapScreen", { count: tapCount, total: targetTaps });
   } else if (phase === "answering") {
-    questionText = roundRef.current.entryPrompt;
+    questionText = t("game.entryPrompt");
   } else if (phase === "feedback") {
     questionText = feedbackMsg;
   } else {

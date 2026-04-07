@@ -80,6 +80,12 @@ body {
   letter-spacing: 0.06em;
 }
 
+.font-i18n {
+  font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Noto Sans CJK SC",
+    "Arial Unicode MS", sans-serif;
+}
+
 .arcade-grid {
   background-image:
     linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),

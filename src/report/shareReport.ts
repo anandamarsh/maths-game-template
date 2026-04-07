@@ -2,7 +2,7 @@
 
 import { generateSessionPdf } from "./generatePdf";
 import type { SessionSummary } from "./sessionLog";
-import { getT } from "../i18n";
+import { getIntlLocale, getT } from "../i18n";
 import type { TFunction } from "../i18n/types";
 
 const SITE_URL = "https://www.seemaths.com";
@@ -12,16 +12,12 @@ const CURRICULUM_INDEX_URL =
   "https://www.educationstandards.nsw.edu.au/wps/portal/nesa/k-10/learning-areas/mathematics/mathematics-k-10";
 const CURRICULUM_BY_LEVEL = {
   1: {
-    stageLabel: "Early Stage 1 (Kindergarten) NSW Curriculum",
     code: "MAe-1WM",
-    description: "Demonstrates and describes counting sequences.",
     syllabusUrl:
       "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=6",
   },
   2: {
-    stageLabel: "Early Stage 1 (Kindergarten) NSW Curriculum",
     code: "MAe-1WM",
-    description: "Demonstrates and describes counting sequences.",
     syllabusUrl:
       "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=6",
   },
@@ -38,33 +34,28 @@ function getReportFileName(summary: SessionSummary): string {
   return `ripple-report-${name}-${stamp}.pdf`;
 }
 
-function getOrdinalSuffix(day: number): string {
-  if (day >= 11 && day <= 13) return "th";
-  const lastDigit = day % 10;
-  if (lastDigit === 1) return "st";
-  if (lastDigit === 2) return "nd";
-  if (lastDigit === 3) return "rd";
-  return "th";
-}
-
-function formatSessionDate(timestamp: number): string {
-  const date = new Date(timestamp);
-  const day = date.getDate();
-  const month = date.toLocaleDateString("en-AU", { month: "short" });
-  return `${day}${getOrdinalSuffix(day)} ${month}`;
-}
-
-function formatSessionTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString("en-AU", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
+function formatSessionDate(timestamp: number, locale: string): string {
+  return new Date(timestamp).toLocaleDateString(locale, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 }
 
-function formatDurationMinutes(startTime: number, endTime: number): string {
+function formatSessionTime(timestamp: number, locale: string): string {
+  return new Date(timestamp).toLocaleTimeString(locale, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatDurationMinutes(startTime: number, endTime: number, locale: string): string {
   const minutes = Math.max(1, Math.round((endTime - startTime) / 60000));
-  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+  return new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit: "minute",
+    unitDisplay: "long",
+  }).format(minutes);
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -85,7 +76,8 @@ function blobToBase64(blob: Blob): Promise<string> {
 
 export async function downloadReport(summary: SessionSummary): Promise<void> {
   const t = getT(getCurrentLocale());
-  const blob = await generateSessionPdf(summary, t);
+  const locale = getCurrentLocale();
+  const blob = await generateSessionPdf(summary, t, locale);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -98,7 +90,8 @@ export async function downloadReport(summary: SessionSummary): Promise<void> {
 
 export async function shareReport(summary: SessionSummary): Promise<boolean> {
   const t = getT(getCurrentLocale());
-  const blob = await generateSessionPdf(summary, t);
+  const locale = getCurrentLocale();
+  const blob = await generateSessionPdf(summary, t, locale);
   const fileName = getReportFileName(summary);
   const file = new File([blob], fileName, { type: "application/pdf" });
 
@@ -130,26 +123,27 @@ export async function shareReport(summary: SessionSummary): Promise<boolean> {
   return true;
 }
 
-function getEmailMetadata(summary: SessionSummary) {
+function getEmailMetadata(summary: SessionSummary, t: TFunction, locale: string) {
   const level = (summary.level in CURRICULUM_BY_LEVEL ? summary.level : 1) as keyof typeof CURRICULUM_BY_LEVEL;
   const curriculum = CURRICULUM_BY_LEVEL[level];
+  const intlLocale = getIntlLocale(locale);
   return {
     gameName: GAME_NAME,
     senderName: SENDER_NAME,
     siteUrl: SITE_URL,
-    sessionTime: formatSessionTime(summary.startTime),
-    sessionDate: formatSessionDate(summary.startTime),
-    durationText: formatDurationMinutes(summary.startTime, summary.endTime),
-    stageLabel: curriculum.stageLabel,
+    sessionTime: formatSessionTime(summary.startTime, intlLocale),
+    sessionDate: formatSessionDate(summary.startTime, intlLocale),
+    durationText: formatDurationMinutes(summary.startTime, summary.endTime, intlLocale),
+    stageLabel: t("curriculum.stageEarlyStage1"),
     curriculumCode: curriculum.code,
-    curriculumDescription: curriculum.description,
+    curriculumDescription: t("curriculum.outcomeMae1wm"),
     curriculumUrl: curriculum.syllabusUrl,
     curriculumIndexUrl: CURRICULUM_INDEX_URL,
   };
 }
 
-function buildEmailStrings(summary: SessionSummary, t: TFunction) {
-  const meta = getEmailMetadata(summary);
+function buildEmailStrings(summary: SessionSummary, t: TFunction, locale: string) {
+  const meta = getEmailMetadata(summary, t, locale);
   const scoreLine = `${summary.correctCount}/${summary.totalQuestions}`;
   const accuracy = `${summary.accuracy}%`;
 
@@ -177,9 +171,10 @@ export async function emailReport(
   summary: SessionSummary,
   email: string,
 ): Promise<void> {
-  const t = getT(getCurrentLocale());
-  const blob = await generateSessionPdf(summary, t);
-  const emailStrings = buildEmailStrings(summary, t);
+  const locale = getCurrentLocale();
+  const t = getT(locale);
+  const blob = await generateSessionPdf(summary, t, locale);
+  const emailStrings = buildEmailStrings(summary, t, locale);
 
   const response = await fetch("/api/send-report", {
     method: "POST",
@@ -191,7 +186,7 @@ export async function emailReport(
       correctCount: summary.correctCount,
       totalQuestions: summary.totalQuestions,
       accuracy: summary.accuracy,
-      ...getEmailMetadata(summary),
+      ...getEmailMetadata(summary, t, locale),
       ...emailStrings,
       reportFileName: getReportFileName(summary),
     }),

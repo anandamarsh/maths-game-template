@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useIsMobileLandscape } from "../hooks/useMediaQuery";
-import { useT } from "../i18n";
+import { useLocale, useT } from "../i18n";
 import type { SessionSummary } from "../report/sessionLog";
 import { emailReport, shareReport } from "../report/shareReport";
 import type { ModalAutopilotControls } from "../hooks/useAutopilot";
@@ -179,7 +179,11 @@ interface Props {
 
 export default function SessionReportModal({ summary, level, onClose, onNextLevel, autopilotControlsRef }: Props) {
   const t = useT();
+  const { locale } = useLocale();
   const isMobileLandscape = useIsMobileLandscape();
+  const headingClasses = locale === "en"
+    ? "text-4xl font-black uppercase tracking-[0.18em] text-yellow-300 md:text-5xl"
+    : "font-i18n text-4xl font-black tracking-[0.06em] text-yellow-300 md:text-5xl";
 
   return (
     <div
@@ -202,10 +206,10 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
           border: isMobileLandscape ? "none" : undefined,
         }}
       >
-        <div className="text-4xl font-black uppercase tracking-[0.18em] text-yellow-300 md:text-5xl">
+        <div className={headingClasses}>
           {t("report.levelComplete", { level })}
         </div>
-        <div className="mt-2 text-base font-bold text-purple-300 md:text-lg">
+        <div className="font-i18n mt-2 text-base font-bold text-purple-300 md:text-lg">
           {t("report.subheading")}
         </div>
         <div className="mt-4 flex items-center justify-center gap-1">

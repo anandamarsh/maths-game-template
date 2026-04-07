@@ -3,6 +3,8 @@
 import { jsPDF } from "jspdf";
 import type { SessionSummary, QuestionAttempt } from "./sessionLog";
 import type { TFunction } from "../i18n/types";
+import arialUnicodeUrl from "../assets/fonts/ArialUnicode.ttf?url";
+import { getIntlLocale } from "../i18n";
 
 // --- Color palette ---
 
@@ -19,27 +21,61 @@ const COLORS = {
   textMuted: "#64748b",
 };
 
+const PDF_FONT_FILE = "ArialUnicode.ttf";
+const PDF_FONT_FAMILY = "ArialUnicode";
+let pdfFontBinaryPromise: Promise<string> | null = null;
+
 // --- Helpers ---
 
-function formatDuration(ms: number): string {
+function formatDuration(ms: number, t: TFunction): string {
   const totalSec = Math.round(ms / 1000);
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
-  if (min === 0) return `${sec}s`;
-  return `${min}m ${sec}s`;
+  if (min === 0) return t("pdf.durationSeconds", { seconds: totalSec });
+  return t("pdf.durationMinutesSeconds", { minutes: min, seconds: sec });
 }
 
-function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+function formatTime(ts: number, locale: string): string {
+  return new Date(ts).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString([], {
+function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+}
+
+function arrayBufferToBinaryString(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let result = "";
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    result += String.fromCharCode(...chunk);
+  }
+  return result;
+}
+
+async function ensurePdfFont(doc: jsPDF): Promise<string> {
+  if (!pdfFontBinaryPromise) {
+    pdfFontBinaryPromise = fetch(arialUnicodeUrl)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load PDF font: ${response.status}`);
+        }
+        return arrayBufferToBinaryString(await response.arrayBuffer());
+      });
+  }
+
+  const fontBinary = await pdfFontBinaryPromise;
+  doc.addFileToVFS(PDF_FONT_FILE, fontBinary);
+  doc.addFont(PDF_FONT_FILE, PDF_FONT_FAMILY, "normal");
+  doc.addFont(PDF_FONT_FILE, PDF_FONT_FAMILY, "bold");
+  doc.setFont(PDF_FONT_FAMILY, "normal");
+  return PDF_FONT_FAMILY;
 }
 
 // --- Icon loader ---
@@ -145,6 +181,7 @@ function drawRippleDiagram(
 
     // Overlap-aware label placement
     doc.setFontSize(4.5);
+    doc.setFont(PDF_FONT_FAMILY, "normal");
     const labelText = `(${rp.x},${rp.y})`;
     const labelW = doc.getTextWidth(labelText);
 
@@ -175,6 +212,7 @@ function drawRippleDiagram(
 
   // "Ripple count" label at bottom
   doc.setFontSize(5);
+  doc.setFont(PDF_FONT_FAMILY, "normal");
   doc.setTextColor("#64748b");
   doc.text(
     t("pdf.rippleCount", { count: attempt.ripplePositions.length }),
@@ -184,8 +222,16 @@ function drawRippleDiagram(
 
 // --- Main PDF generation ---
 
-export async function generateSessionPdf(summary: SessionSummary, t: TFunction): Promise<Blob> {
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+export async function generateSessionPdf(summary: SessionSummary, t: TFunction, locale = "en"): Promise<Blob> {
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+    compress: true,
+    putOnlyUsedFonts: true,
+  });
+  const fontFamily = await ensurePdfFont(doc);
+  const intlLocale = getIntlLocale(locale);
   const pageW = doc.internal.pageSize.getWidth();   // 210
   const pageH = doc.internal.pageSize.getHeight();  // 297
   const margin = 15;
@@ -220,21 +266,21 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
 
   doc.setTextColor(COLORS.textDark);
   doc.setFontSize(17);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.text(t("pdf.title"), titleCX, curY + 11, { align: "center" });
 
   const line2Y = curY + 21;
   doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text(formatDate(summary.date), titleColX, line2Y);
+  doc.text(formatDate(summary.date, intlLocale), titleColX, line2Y);
   doc.text(
-    `${formatTime(summary.startTime)} - ${formatTime(summary.endTime)}`,
+    `${formatTime(summary.startTime, intlLocale)} - ${formatTime(summary.endTime, intlLocale)}`,
     margin + contentW - iconPad, line2Y, { align: "right" }
   );
 
   doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.setTextColor(COLORS.textDark);
   doc.text(t("pdf.sessionReport", { n: summary.level }), titleCX, line2Y, { align: "center" });
 
@@ -245,16 +291,16 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   // ═══════════════════════════════════════════════════════════════════════════
 
   doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.setTextColor(COLORS.textDark);
   doc.text(t("pdf.gameDescription"), margin, curY);
   curY += 5.5;
 
   doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.setTextColor(COLORS.textDark);
   doc.text(t("pdf.objectiveLabel"), margin, curY);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
     t("pdf.objectiveText"),
@@ -278,11 +324,11 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   doc.setLineWidth(0.5);
   doc.roundedRect(margin, curY, boxW, boxH, 3, 3, "S");
   doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(t("pdf.scoreLabel"), margin + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.setTextColor(scoreColor);
   doc.text(`${summary.correctCount} / ${summary.totalQuestions}`, margin + boxW / 2, curY + 13.5, { align: "center" });
 
@@ -295,11 +341,11 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   doc.setDrawColor(accColor);
   doc.roundedRect(box2X, curY, boxW, boxH, 3, 3, "S");
   doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(t("pdf.accuracyLabel"), box2X + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.setTextColor(accColor);
   doc.text(`${summary.accuracy}%`, box2X + boxW / 2, curY + 13.5, { align: "center" });
 
@@ -310,13 +356,13 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   doc.setDrawColor(COLORS.accentPurple);
   doc.roundedRect(box3X, curY, boxW, boxH, 3, 3, "S");
   doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(t("pdf.timeLabel"), box3X + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.setTextColor(COLORS.accentPurple);
-  doc.text(formatDuration(summary.endTime - summary.startTime), box3X + boxW / 2, curY + 13.5, { align: "center" });
+  doc.text(formatDuration(summary.endTime - summary.startTime, t), box3X + boxW / 2, curY + 13.5, { align: "center" });
 
   curY += boxH + 7;
 
@@ -390,18 +436,18 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
     // Q number
     const qLabel = t("pdf.questionLabel", { n: attempt.questionNumber });
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontFamily, "bold");
     doc.setTextColor(COLORS.textDark);
     doc.text(qLabel, cardLeft + stripeW + 3, curY + 6.8);
 
     // CORRECT / WRONG + time
-    const timeStr = formatDuration(attempt.timeTakenMs);
+    const timeStr = formatDuration(attempt.timeTakenMs, t);
     doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontFamily, "normal");
     const timeW2 = doc.getTextWidth(timeStr);
 
     doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontFamily, "bold");
     const icon = attempt.isCorrect ? t("pdf.correct") : t("pdf.wrong");
     const iconW = doc.getTextWidth(icon);
 
@@ -412,7 +458,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
     doc.text(icon, groupStart, curY + 6.8);
 
     doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontFamily, "normal");
     doc.setTextColor(COLORS.textMuted);
     doc.text(timeStr, groupRight, curY + 6.8, { align: "right" });
 
@@ -430,7 +476,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
     const textW = cardRight - textX - 4;
 
     doc.setFontSize(8.5);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontFamily, "bold");
     doc.setTextColor(COLORS.textDark);
     const promptLines = doc.splitTextToSize(attempt.prompt, textW);
     doc.text(promptLines, textX, curY + bodyPad + 4);
@@ -438,7 +484,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
     let textY = curY + bodyPad + 4 + promptLines.length * 4.5 + 3;
 
     doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontFamily, "normal");
     doc.setTextColor(attempt.isCorrect ? COLORS.correctDark : COLORS.wrongBorder);
     doc.text(t("pdf.givenAnswer", { value: attempt.childAnswer ?? "-" }), textX, textY);
     textY += 4.5;
@@ -480,7 +526,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   drawStar(doc, rEdge - 9, starCY + 6, 2.5, 1.1, "#fde68a");
 
   doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.setTextColor(COLORS.accentPurple);
   const encouragement =
     summary.accuracy >= 90 ? t("pdf.encourage90") :
@@ -492,13 +538,14 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   const wrongAttempts = summary.attempts.filter(a => !a.isCorrect);
   if (wrongAttempts.length > 0) {
     doc.setFontSize(7.5);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontFamily, "normal");
     doc.setTextColor(COLORS.textMuted);
     doc.text(t("pdf.tip"), pageW / 2, curY + 22, { align: "center" });
   }
 
   // Footer
   doc.setFontSize(7);
+  doc.setFont(fontFamily, "normal");
   doc.setTextColor("#94a3b8");
   doc.text(t("pdf.footer"), pageW / 2, pageH - 8, { align: "center" });
   doc.text(t("pdf.footerUrl"), pageW / 2, pageH - 4, { align: "center" });

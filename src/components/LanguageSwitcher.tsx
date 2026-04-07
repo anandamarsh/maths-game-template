@@ -114,7 +114,7 @@ export default function LanguageSwitcher() {
       {/* Dropdown */}
       {open && (
         <div
-          className="absolute right-0 top-full mt-1.5 z-[100] min-w-[180px] rounded-xl overflow-hidden"
+          className="font-i18n absolute right-0 top-full mt-1.5 z-[100] min-w-[180px] rounded-xl overflow-hidden"
           style={{
             background: "rgba(15,23,42,0.97)",
             border: "2px solid rgba(56,189,248,0.35)",
@@ -132,7 +132,7 @@ export default function LanguageSwitcher() {
                     key={code}
                     type="button"
                     onClick={() => handleSelect(code)}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-slate-700/60"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-sm leading-none transition-colors hover:bg-slate-700/60"
                     style={{
                       color: isActive ? "#67e8f9" : "#e2e8f0",
                       fontWeight: isActive ? 800 : 500,

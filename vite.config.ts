@@ -144,10 +144,10 @@ function localApiPlugin() {
             // Use i18n email strings if provided by the frontend
             const greeting = String(payload.emailGreeting || 'Hi there,')
             const bodyText = payload.emailBody
-              ? `<p>${String(payload.emailBody).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
+              ? `<p>${String(payload.emailBody).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p><p><a href="${siteUrl}">SeeMaths</a></p>`
               : `<p>A player completed <strong>${gameName}</strong> at ${time} on ${date} for ${duration}.</p><p>Score: <strong>${score}</strong> &nbsp;|&nbsp; Accuracy: <strong>${accuracy}</strong></p>`
             const currText = payload.emailCurriculum
-              ? `<p>${String(payload.emailCurriculum).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
+              ? `<p>${String(payload.emailCurriculum).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p><p><a href="${String(payload.curriculumIndexUrl || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}">${stageLabel}</a><br/><a href="${String(payload.curriculumUrl || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}">${code} - ${desc}</a></p>`
               : `<p>Curriculum: <strong>${stageLabel}</strong> — ${code}: ${desc}</p>`
             const regards = String(payload.emailRegards || 'Regards,')
 

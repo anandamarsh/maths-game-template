@@ -117,10 +117,10 @@ export default async function handler(req: any, res: any) {
   // Wrap it in basic HTML. If not translated, bodyIntro already has HTML.
   const hasTranslatedStrings = !!payload?.emailBody;
   const formattedBody = hasTranslatedStrings
-    ? `<p>${escapeHtml(bodyIntro)}</p>`
+    ? `<p>${escapeHtml(bodyIntro)}</p><p><a href="${escapeHtml(siteUrl)}">SeeMaths</a></p>`
     : `<p>${bodyIntro}</p>`;
   const formattedCurriculum = hasTranslatedStrings
-    ? `<p>${escapeHtml(curriculumParagraph)}</p>`
+    ? `<p>${escapeHtml(curriculumParagraph)}</p><p><a href="${escapeHtml(curriculumIndexUrl)}">${escapeHtml(stageLabel)}</a><br /><a href="${escapeHtml(curriculumUrl)}">${escapeHtml(curriculumCode)} - ${escapeHtml(curriculumDescription)}</a></p>`
     : `<p>${curriculumParagraph}</p>`;
 
   const resendResponse = await fetch("https://api.resend.com/emails", {
