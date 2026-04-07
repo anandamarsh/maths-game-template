@@ -21,7 +21,9 @@ function LevelCompleteReportActions({
 }) {
   const t = useT();
   const [generating, setGenerating] = useState(false);
-  const [shareEmail, setShareEmail] = useState("");
+  const [shareEmail, setShareEmail] = useState(() => {
+    try { return localStorage.getItem("reportEmail") || ""; } catch { return ""; }
+  });
   const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
   const totalEggs = summary.normalEggs + summary.monsterEggs;
@@ -56,12 +58,17 @@ function LevelCompleteReportActions({
     if (!autopilotControlsRef) return;
     autopilotControlsRef.current = {
       appendChar: (ch) => {
-        setShareEmail(prev => prev + ch);
+        setShareEmail(prev => {
+          const v = prev + ch;
+          try { localStorage.setItem("reportEmail", v); } catch { /* ignore */ }
+          return v;
+        });
         setEmailFeedback(null);
         setEmailError(false);
       },
       setEmail: (v) => {
         setShareEmail(v);
+        try { localStorage.setItem("reportEmail", v); } catch { /* ignore */ }
         setEmailFeedback(null);
         setEmailError(false);
       },
@@ -137,7 +144,9 @@ function LevelCompleteReportActions({
           data-autopilot-key="email-input"
           value={shareEmail}
           onChange={(event) => {
-            setShareEmail(event.target.value);
+            const v = event.target.value;
+            setShareEmail(v);
+            try { localStorage.setItem("reportEmail", v); } catch { /* ignore */ }
             if (emailFeedback) {
               setEmailFeedback(null);
               setEmailError(false);
