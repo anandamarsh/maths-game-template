@@ -2,6 +2,7 @@
 
 import { jsPDF } from "jspdf";
 import type { SessionSummary, QuestionAttempt } from "./sessionLog";
+import type { TFunction } from "../i18n/types";
 
 // --- Color palette ---
 
@@ -104,6 +105,7 @@ function drawRippleDiagram(
   y: number,
   width: number,
   height: number,
+  t: TFunction,
 ) {
   // Light background
   doc.setFillColor("#f8fafc");
@@ -175,14 +177,14 @@ function drawRippleDiagram(
   doc.setFontSize(5);
   doc.setTextColor("#64748b");
   doc.text(
-    `${attempt.ripplePositions.length} ripple${attempt.ripplePositions.length !== 1 ? "s" : ""}`,
+    t("pdf.rippleCount", { count: attempt.ripplePositions.length }),
     x + width / 2, y + height - 2, { align: "center" },
   );
 }
 
 // --- Main PDF generation ---
 
-export async function generateSessionPdf(summary: SessionSummary): Promise<Blob> {
+export async function generateSessionPdf(summary: SessionSummary, t: TFunction): Promise<Blob> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();   // 210
   const pageH = doc.internal.pageSize.getHeight();  // 297
@@ -219,7 +221,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setTextColor(COLORS.textDark);
   doc.setFontSize(17);
   doc.setFont("helvetica", "bold");
-  doc.text("Ripple Touch", titleCX, curY + 11, { align: "center" });
+  doc.text(t("pdf.title"), titleCX, curY + 11, { align: "center" });
 
   const line2Y = curY + 21;
   doc.setFontSize(7.5);
@@ -234,7 +236,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.textDark);
-  doc.text(`Session Report (Level ${summary.level})`, titleCX, line2Y, { align: "center" });
+  doc.text(t("pdf.sessionReport", { n: summary.level }), titleCX, line2Y, { align: "center" });
 
   curY += bannerH + 10;
 
@@ -245,18 +247,18 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.textDark);
-  doc.text("Counting & Number Recognition", margin, curY);
+  doc.text(t("pdf.gameDescription"), margin, curY);
   curY += 5.5;
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.textDark);
-  doc.text("Objective:", margin, curY);
+  doc.text(t("pdf.objectiveLabel"), margin, curY);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
-    "Count ripples on screen and enter the correct number on the keypad.",
-    margin + doc.getTextWidth("Objective:") + 2, curY
+    t("pdf.objectiveText"),
+    margin + doc.getTextWidth(t("pdf.objectiveLabel")) + 2, curY
   );
   curY += 8;
 
@@ -278,7 +280,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text("Score", margin + boxW / 2, curY + 5.5, { align: "center" });
+  doc.text(t("pdf.scoreLabel"), margin + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(scoreColor);
@@ -295,7 +297,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text("Accuracy", box2X + boxW / 2, curY + 5.5, { align: "center" });
+  doc.text(t("pdf.accuracyLabel"), box2X + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(accColor);
@@ -310,7 +312,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text("Total Time", box3X + boxW / 2, curY + 5.5, { align: "center" });
+  doc.text(t("pdf.timeLabel"), box3X + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.accentPurple);
@@ -386,7 +388,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
     doc.rect(cardLeft, curY, stripeW, stripeH, "F");
 
     // Q number
-    const qLabel = `Q${attempt.questionNumber}`;
+    const qLabel = t("pdf.questionLabel", { n: attempt.questionNumber });
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(COLORS.textDark);
@@ -400,7 +402,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    const icon = attempt.isCorrect ? "CORRECT" : "WRONG";
+    const icon = attempt.isCorrect ? t("pdf.correct") : t("pdf.wrong");
     const iconW = doc.getTextWidth(icon);
 
     const groupRight = pageW - margin - 4;
@@ -421,7 +423,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
     const diagramX = cardLeft + stripeW + 4;
 
     // Draw the ripple position diagram
-    drawRippleDiagram(doc, attempt, diagramX, curY + bodyPad, diagramW, diagramH);
+    drawRippleDiagram(doc, attempt, diagramX, curY + bodyPad, diagramW, diagramH, t);
 
     // Question and answer text (right of diagram)
     const textX = diagramX + diagramW + 5;
@@ -438,11 +440,11 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(attempt.isCorrect ? COLORS.correctDark : COLORS.wrongBorder);
-    doc.text(`Given Answer: ${attempt.childAnswer ?? "-"}`, textX, textY);
+    doc.text(t("pdf.givenAnswer", { value: attempt.childAnswer ?? "-" }), textX, textY);
     textY += 4.5;
 
     doc.setTextColor(COLORS.textDark);
-    doc.text(`Correct answer: ${attempt.correctAnswer}`, textX, textY);
+    doc.text(t("pdf.correctAnswer", { value: attempt.correctAnswer }), textX, textY);
 
     curY += cardBodyH;
 
@@ -481,10 +483,10 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.accentPurple);
   const encouragement =
-    summary.accuracy >= 90 ? "Amazing work! You're a counting champion!" :
-    summary.accuracy >= 70 ? "Great job! You're getting really good at this!" :
-    summary.accuracy >= 50 ? "Nice effort! Keep practising and you'll be a pro!" :
-                             "Good try! Every attempt makes you stronger!";
+    summary.accuracy >= 90 ? t("pdf.encourage90") :
+    summary.accuracy >= 70 ? t("pdf.encourage70") :
+    summary.accuracy >= 50 ? t("pdf.encourage50") :
+                             t("pdf.encourageBelow");
   doc.text(encouragement, pageW / 2, curY + 13, { align: "center" });
 
   const wrongAttempts = summary.attempts.filter(a => !a.isCorrect);
@@ -492,14 +494,14 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
     doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(COLORS.textMuted);
-    doc.text("Tip: Try counting more carefully next time - take your time!", pageW / 2, curY + 22, { align: "center" });
+    doc.text(t("pdf.tip"), pageW / 2, curY + 22, { align: "center" });
   }
 
   // Footer
   doc.setFontSize(7);
   doc.setTextColor("#94a3b8");
-  doc.text("Generated by SeeMaths - Ripple Touch", pageW / 2, pageH - 8, { align: "center" });
-  doc.text("https://www.seemaths.com", pageW / 2, pageH - 4, { align: "center" });
+  doc.text(t("pdf.footer"), pageW / 2, pageH - 8, { align: "center" });
+  doc.text(t("pdf.footerUrl"), pageW / 2, pageH - 4, { align: "center" });
 
   return doc.output("blob");
 }

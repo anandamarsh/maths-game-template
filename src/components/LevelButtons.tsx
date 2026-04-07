@@ -1,3 +1,5 @@
+import { useT } from "../i18n";
+
 interface LevelButtonsProps {
   levelCount: number;
   currentLevel: number;
@@ -11,6 +13,7 @@ export default function LevelButtons({
   unlockedLevel,
   onSelect,
 }: LevelButtonsProps) {
+  const t = useT();
   const levels = Array.from({ length: levelCount }, (_, i) => i + 1);
 
   return (
@@ -25,7 +28,7 @@ export default function LevelButtons({
             key={lv}
             onClick={() => !locked && onSelect(lv)}
             disabled={locked}
-            title={locked ? `Complete Level ${lv - 1} first` : undefined}
+            title={locked ? t("level.completePrev", { n: lv - 1 }) : undefined}
             className="w-9 h-8 rounded text-xs font-black border-2 transition-colors"
             style={{
               background: locked ? "#0f172a" : isActive ? "#0ea5e9" : isDone ? "#78350f" : "#1e293b",
@@ -36,7 +39,7 @@ export default function LevelButtons({
               opacity: locked ? 0.5 : 1,
             }}
           >
-            {locked ? "🔒" : lv}
+            {locked ? "\u{1F512}" : lv}
           </button>
         );
       })}

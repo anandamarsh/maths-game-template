@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useT } from "../i18n";
 
 function usePortraitMobile() {
   const isTouchDevice =
@@ -25,6 +26,7 @@ function usePortraitMobile() {
 
 export default function RotatePrompt() {
   const show = usePortraitMobile();
+  const t = useT();
 
   useEffect(() => {
     if (typeof window === "undefined" || window.parent === window) return;
@@ -74,10 +76,10 @@ export default function RotatePrompt() {
 
       <div style={{ textAlign: "center", color: "#e0eeff", padding: "0 2rem" }}>
         <p style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: "0.5rem", letterSpacing: "0.02em" }}>
-          Rotate your device
+          {t("rotate.heading")}
         </p>
         <p style={{ fontSize: "1rem", color: "#7aaad4", lineHeight: 1.5 }}>
-          This game plays best in landscape mode
+          {t("rotate.subtext")}
         </p>
       </div>
 

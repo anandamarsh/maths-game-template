@@ -63,6 +63,12 @@ export default async function handler(req: any, res: any) {
         curriculumUrl?: string;
         curriculumIndexUrl?: string;
         reportFileName?: string;
+        // i18n: pre-translated email strings from the frontend
+        emailSubject?: string;
+        emailGreeting?: string;
+        emailBody?: string;
+        emailCurriculum?: string;
+        emailRegards?: string;
       }
     | null;
 
@@ -79,10 +85,7 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const playerName = (payload?.playerName || "Explorer").trim() || "Explorer";
   const reportFileName = payload?.reportFileName || "ripple-report.pdf";
-  const scoreLine = `${payload?.correctCount ?? 0}/${payload?.totalQuestions ?? 0}`;
-  const accuracy = `${payload?.accuracy ?? 0}%`;
   const senderName = payload?.senderName || "Ripple Touch";
   const gameName = payload?.gameName || "Ripple Touch";
   const siteUrl = payload?.siteUrl || "https://www.seemaths.com";
@@ -97,7 +100,28 @@ export default async function handler(req: any, res: any) {
   const curriculumIndexUrl =
     payload?.curriculumIndexUrl ||
     "https://www.educationstandards.nsw.edu.au/wps/portal/nesa/k-10/learning-areas/mathematics/mathematics-k-10";
-  const curriculumText = `${curriculumCode} - ${curriculumDescription}`;
+
+  const scoreLine = `${payload?.correctCount ?? 0}/${payload?.totalQuestions ?? 0}`;
+  const accuracy = `${payload?.accuracy ?? 0}%`;
+
+  // Use pre-translated strings if available, otherwise fall back to English defaults
+  const subject = payload?.emailSubject || `${gameName} Report`;
+  const greeting = payload?.emailGreeting || "Hi there,";
+  const bodyIntro = payload?.emailBody ||
+    `A player played <strong>${escapeHtml(gameName)}</strong> at <a href="${escapeHtml(siteUrl)}">SeeMaths</a> at <strong>${escapeHtml(sessionTime)}</strong> on <strong>${escapeHtml(sessionDate)}</strong> for <strong>${escapeHtml(durationText)}</strong>. They scored <strong>${escapeHtml(scoreLine)}</strong> and had an accuracy of <strong>${escapeHtml(accuracy)}</strong>.`;
+  const curriculumParagraph = payload?.emailCurriculum ||
+    `This game is equivalent to <a href="${escapeHtml(curriculumIndexUrl)}"><strong>${escapeHtml(stageLabel)}</strong></a> on topic <a href="${escapeHtml(curriculumUrl)}"><strong>${escapeHtml(curriculumCode)} - ${escapeHtml(curriculumDescription)}</strong></a>.`;
+  const regards = payload?.emailRegards || "Regards,";
+
+  // If translated strings were provided, the body text is plain (no HTML formatting).
+  // Wrap it in basic HTML. If not translated, bodyIntro already has HTML.
+  const hasTranslatedStrings = !!payload?.emailBody;
+  const formattedBody = hasTranslatedStrings
+    ? `<p>${escapeHtml(bodyIntro)}</p>`
+    : `<p>${bodyIntro}</p>`;
+  const formattedCurriculum = hasTranslatedStrings
+    ? `<p>${escapeHtml(curriculumParagraph)}</p>`
+    : `<p>${curriculumParagraph}</p>`;
 
   const resendResponse = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -108,22 +132,13 @@ export default async function handler(req: any, res: any) {
     body: JSON.stringify({
       from: `${senderName} <${from}>`,
       to: [email],
-      subject: `${gameName} Report`,
+      subject,
       html: `
-        <p>Hi there,</p>
+        <p>${escapeHtml(greeting)}</p>
+        ${formattedBody}
+        ${formattedCurriculum}
         <p>
-          A player played <strong>${escapeHtml(gameName)}</strong> at
-          <a href="${escapeHtml(siteUrl)}">SeeMaths</a>
-          at <strong>${escapeHtml(sessionTime)}</strong> on <strong>${escapeHtml(sessionDate)}</strong> for
-          <strong>${escapeHtml(durationText)}</strong>. They scored <strong>${escapeHtml(scoreLine)}</strong>
-          and had an accuracy of <strong>${escapeHtml(accuracy)}</strong>.
-        </p>
-        <p>
-          This game is equivalent to <a href="${escapeHtml(curriculumIndexUrl)}"><strong>${escapeHtml(stageLabel)}</strong></a> on topic
-          <a href="${escapeHtml(curriculumUrl)}"><strong>${escapeHtml(curriculumText)}</strong></a>.
-        </p>
-        <p>
-          Regards,<br />
+          ${escapeHtml(regards)}<br />
           ${escapeHtml(gameName)}<br />
           <a href="${escapeHtml(siteUrl)}">SeeMaths</a>
         </p>

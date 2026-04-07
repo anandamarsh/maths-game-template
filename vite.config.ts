@@ -25,6 +25,79 @@ function localApiPlugin() {
     configureServer(server: { middlewares: { use: (path: string, fn: (req: any, res: any, next: () => void) => void) => void } }) {
       loadEnvLocal()
 
+      // --- /api/translate (OpenAI on-demand translation) ---
+      server.middlewares.use('/api/translate', (req, res, _next) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Method not allowed.' }))
+          return
+        }
+
+        let raw = ''
+        req.on('data', (chunk: Buffer) => { raw += chunk.toString() })
+        req.on('end', async () => {
+          try {
+            const payload = JSON.parse(raw)
+            const apiKey = process.env.OPENAI_API_KEY
+            if (!apiKey) {
+              res.writeHead(500, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Translation service is not configured. Set OPENAI_API_KEY in .env.local.' }))
+              return
+            }
+
+            const targetLang = String(payload.targetLang || '').trim()
+            const strings = payload.strings
+            if (!targetLang || !strings) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Missing targetLang or strings.' }))
+              return
+            }
+
+            const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                temperature: 0.3,
+                response_format: { type: 'json_object' },
+                messages: [
+                  { role: 'system', content: `You are a professional translator. Translate the JSON object values from English to ${targetLang}. Rules:\n1. Preserve all {placeholder} tokens exactly as-is.\n2. Do not translate URLs.\n3. Do not translate brand names like "SeeMaths", "Ripple Touch", "DiscussIt", "Interactive Maths".\n4. Return a JSON object with two fields: "translations" (the translated strings) and "langCode" (ISO 639-1 two-letter code).` },
+                  { role: 'user', content: JSON.stringify(strings) },
+                ],
+              }),
+            })
+
+            if (!openaiRes.ok) {
+              console.error('[API /api/translate] OpenAI error:', await openaiRes.text())
+              res.writeHead(502, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Translation API request failed.' }))
+              return
+            }
+
+            const data = (await openaiRes.json()) as { choices?: Array<{ message?: { content?: string } }> }
+            const content = data.choices?.[0]?.message?.content
+            if (!content) {
+              res.writeHead(502, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Empty response from translation API.' }))
+              return
+            }
+
+            const parsed = JSON.parse(content)
+            console.log(`[API /api/translate] ✅ Translated to ${targetLang}`)
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({
+              translations: parsed.translations || parsed,
+              langCode: parsed.langCode || targetLang.toLowerCase().slice(0, 2),
+            }))
+          } catch (err) {
+            console.error('[API /api/translate] Error:', err)
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: String(err) }))
+          }
+        })
+      })
+
+      // --- /api/send-report (email with PDF attachment) ---
       server.middlewares.use('/api/send-report', (req, res, _next) => {
         if (req.method !== 'POST') {
           res.writeHead(405, { 'Content-Type': 'application/json' })
@@ -68,12 +141,21 @@ function localApiPlugin() {
             const siteUrl    = String(payload.siteUrl || 'https://www.seemaths.com')
             const fileName   = String(payload.reportFileName || 'report.pdf')
 
+            // Use i18n email strings if provided by the frontend
+            const greeting = String(payload.emailGreeting || 'Hi there,')
+            const bodyText = payload.emailBody
+              ? `<p>${String(payload.emailBody).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
+              : `<p>A player completed <strong>${gameName}</strong> at ${time} on ${date} for ${duration}.</p><p>Score: <strong>${score}</strong> &nbsp;|&nbsp; Accuracy: <strong>${accuracy}</strong></p>`
+            const currText = payload.emailCurriculum
+              ? `<p>${String(payload.emailCurriculum).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
+              : `<p>Curriculum: <strong>${stageLabel}</strong> — ${code}: ${desc}</p>`
+            const regards = String(payload.emailRegards || 'Regards,')
+
             const html = `
-              <p>Hi there,</p>
-              <p>A player completed <strong>${gameName}</strong> at ${time} on ${date} for ${duration}.</p>
-              <p>Score: <strong>${score}</strong> &nbsp;|&nbsp; Accuracy: <strong>${accuracy}</strong></p>
-              <p>Curriculum: <strong>${stageLabel}</strong> — ${code}: ${desc}</p>
-              <p>Regards,<br/>${senderName}<br/><a href="${siteUrl}">${siteUrl}</a></p>
+              <p>${greeting}</p>
+              ${bodyText}
+              ${currText}
+              <p>${regards}<br/>${senderName}<br/><a href="${siteUrl}">${siteUrl}</a></p>
             `
 
             const r = await fetch('https://api.resend.com/emails', {
@@ -85,7 +167,7 @@ function localApiPlugin() {
               body: JSON.stringify({
                 from: `${senderName} <${from}>`,
                 to: [email],
-                subject: `${gameName} Report — ${date}`,
+                subject: String(payload.emailSubject || `${gameName} Report — ${date}`),
                 html,
                 attachments: [{ filename: fileName, content: pdfB64 }],
               }),

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useIsMobileLandscape } from "../hooks/useMediaQuery";
+import { useT } from "../i18n";
 import type { SessionSummary } from "../report/sessionLog";
 import { emailReport, shareReport } from "../report/shareReport";
 import type { ModalAutopilotControls } from "../hooks/useAutopilot";
@@ -18,6 +19,7 @@ function LevelCompleteReportActions({
   isMobileLandscape: boolean;
   autopilotControlsRef?: React.MutableRefObject<ModalAutopilotControls | null>;
 }) {
+  const t = useT();
   const [generating, setGenerating] = useState(false);
   const [shareEmail, setShareEmail] = useState("");
   const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
@@ -35,12 +37,12 @@ function LevelCompleteReportActions({
     setEmailError(false);
     try {
       await emailReport(summary, shareEmail);
-      setEmailFeedback(`Report sent to ${shareEmail.trim()}`);
+      setEmailFeedback(t("report.sendSuccess", { email: shareEmail.trim() }));
     } catch (error) {
       console.error("Email send failed:", error);
       setEmailError(true);
       setEmailFeedback(
-        error instanceof Error ? error.message : "Failed to send report.",
+        error instanceof Error ? error.message : t("report.sendFail"),
       );
     } finally {
       setGenerating(false);
@@ -89,7 +91,7 @@ function LevelCompleteReportActions({
         <div className="grid grid-cols-3 gap-2.5">
           <div className="rounded-2xl border border-emerald-300/20 bg-slate-800/70 px-3 py-3">
             <div className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-400">
-              Score
+              {t("report.score")}
             </div>
             <div className="mt-1 text-xl font-black text-emerald-300 md:text-2xl">
               {summary.correctCount}/{summary.totalQuestions}
@@ -97,7 +99,7 @@ function LevelCompleteReportActions({
           </div>
           <div className="rounded-2xl border border-amber-300/20 bg-slate-800/70 px-3 py-3">
             <div className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-400">
-              Accuracy
+              {t("report.accuracy")}
             </div>
             <div className="mt-1 text-xl font-black text-yellow-300 md:text-2xl">
               {summary.accuracy}%
@@ -105,7 +107,7 @@ function LevelCompleteReportActions({
           </div>
           <div className="rounded-2xl border border-fuchsia-300/20 bg-slate-800/70 px-3 py-3">
             <div className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-400">
-              Eggs
+              {t("report.eggs")}
             </div>
             <div className="mt-1 text-xl font-black text-fuchsia-300 md:text-2xl">
               {totalEggs}
@@ -127,8 +129,8 @@ function LevelCompleteReportActions({
           }}
         >
           {/* Always render "Share Report" to fix the button width; overlay "Creating..." on top */}
-          <span className={generating ? "invisible" : ""}>Share Report</span>
-          {generating && <span className="absolute inset-0 flex items-center justify-center">Creating...</span>}
+          <span className={generating ? "invisible" : ""}>{t("report.shareReport")}</span>
+          {generating && <span className="absolute inset-0 flex items-center justify-center">{t("report.creating")}</span>}
         </button>
         <input
           type="email"
@@ -141,7 +143,7 @@ function LevelCompleteReportActions({
               setEmailError(false);
             }
           }}
-          placeholder="parent@email.com"
+          placeholder={t("report.emailPlaceholder")}
           className="min-w-0 flex-1 rounded-2xl border-2 border-cyan-300 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-200"
         />
         <button
@@ -150,8 +152,8 @@ function LevelCompleteReportActions({
           onClick={handleEmailSend}
           disabled={!canEmailReport || generating}
           className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/25 bg-cyan-400 text-slate-950 transition-opacity disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 disabled:opacity-100"
-          aria-label="Email report"
-          title={canEmailReport ? "Send the report by email" : "Enter an email address"}
+          aria-label={t("report.emailAria")}
+          title={canEmailReport ? t("report.sendTitle") : t("report.enterEmail")}
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 2 11 13" />
@@ -176,6 +178,7 @@ interface Props {
 }
 
 export default function SessionReportModal({ summary, level, onClose, onNextLevel, autopilotControlsRef }: Props) {
+  const t = useT();
   const isMobileLandscape = useIsMobileLandscape();
 
   return (
@@ -200,10 +203,10 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
         }}
       >
         <div className="text-4xl font-black uppercase tracking-[0.18em] text-yellow-300 md:text-5xl">
-          Level {level} Complete!
+          {t("report.levelComplete", { level })}
         </div>
         <div className="mt-2 text-base font-bold text-purple-300 md:text-lg">
-          Monster Round Crushed!
+          {t("report.subheading")}
         </div>
         <div className="mt-4 flex items-center justify-center gap-1">
           {EGG_INDICES.map((i) => (
@@ -249,7 +252,7 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
               data-autopilot-key="next-level"
               className="arcade-button px-8 py-4 text-base md:text-lg"
             >
-              Next Level
+              {t("report.nextLevel")}
             </button>
           )}
           {level >= 2 && (
@@ -257,7 +260,7 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
               onClick={onClose}
               className="arcade-button px-8 py-4 text-base md:text-lg"
             >
-              Play Again
+              {t("report.playAgain")}
             </button>
           )}
         </div>

@@ -1,13 +1,17 @@
+import { useT } from "../i18n";
+
 interface AudioButtonProps {
   muted: boolean;
   onToggle: () => void;
 }
 
 export default function AudioButton({ muted, onToggle }: AudioButtonProps) {
+  const t = useT();
+
   return (
     <button
       onClick={onToggle}
-      title={muted ? "Unmute" : "Mute"}
+      title={muted ? t("audio.unmute") : t("audio.mute")}
       className="arcade-button w-10 h-10 flex items-center justify-center p-2"
       style={
         muted

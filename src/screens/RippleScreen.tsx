@@ -4,6 +4,7 @@ import GameLayout from "../components/GameLayout";
 import PhantomHand from "../components/PhantomHand";
 import SessionReportModal from "../components/SessionReportModal";
 import TutorialHint from "../components/TutorialHint";
+import { useT } from "../i18n";
 import { isMuted, playCorrect, playLevelComplete, playRipple, playWrong, shuffleMusic, startMusic, toggleMute } from "../sound";
 import { getRainbowColor, makeRound, ripplePitch } from "../game/rippleGame";
 import { startSession, startQuestionTimer, logAttempt, buildSummary } from "../report/sessionLog";
@@ -28,6 +29,7 @@ const IS_LOCALHOST_DEV = window.location.hostname === "localhost" || window.loca
 type GamePhase = "tapping" | "answering" | "feedback" | "levelComplete";
 
 export default function RippleScreen() {
+  const t = useT();
   const [ripples, setRipples] = useState<Ripple[]>([]);
   const [calcValue, setCalcValue] = useState("");
   const [muted, setMuted] = useState(isMuted());
@@ -228,12 +230,12 @@ export default function RippleScreen() {
 
     if (isCorrect) {
       playCorrect();
-      setFeedbackMsg("Correct!");
+      setFeedbackMsg(t("game.correct"));
     } else {
       playWrong();
       setQuestionShake(true);
       setTimeout(() => setQuestionShake(false), 400);
-      setFeedbackMsg(`Wrong! It was ${correct}`);
+      setFeedbackMsg(t("game.wrongAnswer", { answer: correct }));
     }
 
     setPhase("feedback");
@@ -442,13 +444,13 @@ export default function RippleScreen() {
 
   let questionText: string;
   if (phase === "tapping") {
-    questionText = `Tap the screen! (${tapCount}/${targetTaps})`;
+    questionText = t("game.tapScreen", { count: tapCount, total: targetTaps });
   } else if (phase === "answering") {
     questionText = roundRef.current.entryPrompt;
   } else if (phase === "feedback") {
     questionText = feedbackMsg;
   } else {
-    questionText = "Level Complete!";
+    questionText = t("game.levelComplete");
   }
 
   return (
@@ -526,7 +528,7 @@ export default function RippleScreen() {
             </div>
           ))}
 
-          <TutorialHint show={showTutorial && !isAutopilot} label="Tap anywhere!" />
+          <TutorialHint show={showTutorial && !isAutopilot} label={t("game.tapAnywhere")} />
         </div>
 
         {/* Session report modal */}
@@ -551,7 +553,7 @@ export default function RippleScreen() {
               className="arcade-button inline-flex px-8 py-4 text-base md:text-lg"
               style={{ borderColor: "#fbbf24" }}
             >
-              Try on your own
+              {t("game.tryOnYourOwn")}
             </button>
           </div>
         </div>

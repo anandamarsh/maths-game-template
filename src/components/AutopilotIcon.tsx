@@ -1,3 +1,5 @@
+import { useT } from "../i18n";
+
 interface Props {
   onClick: () => void;
   active?: boolean;
@@ -8,15 +10,19 @@ interface Props {
 export default function AutopilotIcon({
   onClick,
   active = true,
-  title = "Autopilot ON — click to stop",
-  ariaLabel = "Autopilot active — click to cancel",
+  title,
+  ariaLabel,
 }: Props) {
+  const t = useT();
+  const resolvedTitle = title ?? t("autopilot.clickToStop");
+  const resolvedAria = ariaLabel ?? t("autopilot.ariaCancel");
+
   return (
     <button
       type="button"
       onClick={onClick}
-      title={title}
-      aria-label={ariaLabel}
+      title={resolvedTitle}
+      aria-label={resolvedAria}
       className="h-10 w-10 shrink-0 rounded-full"
       style={{
         border: "1px solid rgba(255,255,255,0.32)",

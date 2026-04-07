@@ -8,8 +8,8 @@ import {
   WhatsappIcon,
   WhatsappShareButton,
 } from "react-share";
+import { useT } from "../i18n";
 
-const SHARE_TITLE = "Check out this maths game on Interactive Maths!";
 const SHARE_URL = "https://interactive-maths.vercel.app/";
 const DEFAULT_DISCUSSIT_URL = import.meta.env.PROD
   ? "https://discussit-widget.vercel.app"
@@ -19,9 +19,12 @@ const LOCAL_DISCUSSIT_URL = (
 ).replace(/\/$/, "");
 
 export function SocialShare() {
+  const t = useT();
+  const shareTitle = t("social.shareTitle");
+
   return (
     <div className="social-share-buttons">
-      <TwitterShareButton url={SHARE_URL} title={SHARE_TITLE}>
+      <TwitterShareButton url={SHARE_URL} title={shareTitle}>
         <span className="social-share-chip">
           <TwitterIcon size={36} round />
           <span>X</span>
@@ -33,13 +36,13 @@ export function SocialShare() {
           <span>Facebook</span>
         </span>
       </FacebookShareButton>
-      <WhatsappShareButton url={SHARE_URL} title={SHARE_TITLE} separator=" - ">
+      <WhatsappShareButton url={SHARE_URL} title={shareTitle} separator=" - ">
         <span className="social-share-chip">
           <WhatsappIcon size={36} round />
           <span>WhatsApp</span>
         </span>
       </WhatsappShareButton>
-      <LinkedinShareButton url={SHARE_URL} title={SHARE_TITLE} summary={SHARE_TITLE}>
+      <LinkedinShareButton url={SHARE_URL} title={shareTitle} summary={shareTitle}>
         <span className="social-share-chip">
           <LinkedinIcon size={36} round />
           <span>LinkedIn</span>
@@ -50,6 +53,7 @@ export function SocialShare() {
 }
 
 export function SocialComments() {
+  const t = useT();
   const pageUrl = typeof window !== "undefined" ? window.location.href : SHARE_URL;
   const iframeUrl = `${LOCAL_DISCUSSIT_URL}/?url=${encodeURIComponent(pageUrl)}&theme=dark`;
 
@@ -58,7 +62,7 @@ export function SocialComments() {
       <iframe
         data-discussit-comments="true"
         src={iframeUrl}
-        title="DiscussIt comments"
+        title={t("social.commentsTitle")}
         style={{
           width: "100%",
           height: "100%",

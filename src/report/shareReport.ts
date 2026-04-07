@@ -2,6 +2,8 @@
 
 import { generateSessionPdf } from "./generatePdf";
 import type { SessionSummary } from "./sessionLog";
+import { getT } from "../i18n";
+import type { TFunction } from "../i18n/types";
 
 const SITE_URL = "https://www.seemaths.com";
 const GAME_NAME = "Ripple Touch";
@@ -24,6 +26,11 @@ const CURRICULUM_BY_LEVEL = {
       "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=6",
   },
 } as const;
+
+/** Get the current locale from localStorage, defaulting to "en" */
+function getCurrentLocale(): string {
+  try { return localStorage.getItem("lang") || "en"; } catch { return "en"; }
+}
 
 function getReportFileName(summary: SessionSummary): string {
   const stamp = new Date().toISOString().slice(0, 10);
@@ -77,7 +84,8 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 export async function downloadReport(summary: SessionSummary): Promise<void> {
-  const blob = await generateSessionPdf(summary);
+  const t = getT(getCurrentLocale());
+  const blob = await generateSessionPdf(summary, t);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -89,7 +97,8 @@ export async function downloadReport(summary: SessionSummary): Promise<void> {
 }
 
 export async function shareReport(summary: SessionSummary): Promise<boolean> {
-  const blob = await generateSessionPdf(summary);
+  const t = getT(getCurrentLocale());
+  const blob = await generateSessionPdf(summary, t);
   const fileName = getReportFileName(summary);
   const file = new File([blob], fileName, { type: "application/pdf" });
 
@@ -139,11 +148,39 @@ function getEmailMetadata(summary: SessionSummary) {
   };
 }
 
+function buildEmailStrings(summary: SessionSummary, t: TFunction) {
+  const meta = getEmailMetadata(summary);
+  const scoreLine = `${summary.correctCount}/${summary.totalQuestions}`;
+  const accuracy = `${summary.accuracy}%`;
+
+  return {
+    emailSubject: t("email.subject", { gameName: meta.gameName }),
+    emailGreeting: t("email.greeting"),
+    emailBody: t("email.bodyIntro", {
+      game: meta.gameName,
+      time: meta.sessionTime,
+      date: meta.sessionDate,
+      duration: meta.durationText,
+      score: scoreLine,
+      accuracy,
+    }),
+    emailCurriculum: t("email.curriculumIntro", {
+      stageLabel: meta.stageLabel,
+      curriculumCode: meta.curriculumCode,
+      curriculumDescription: meta.curriculumDescription,
+    }),
+    emailRegards: t("email.regards"),
+  };
+}
+
 export async function emailReport(
   summary: SessionSummary,
   email: string,
 ): Promise<void> {
-  const blob = await generateSessionPdf(summary);
+  const t = getT(getCurrentLocale());
+  const blob = await generateSessionPdf(summary, t);
+  const emailStrings = buildEmailStrings(summary, t);
+
   const response = await fetch("/api/send-report", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -155,6 +192,7 @@ export async function emailReport(
       totalQuestions: summary.totalQuestions,
       accuracy: summary.accuracy,
       ...getEmailMetadata(summary),
+      ...emailStrings,
       reportFileName: getReportFileName(summary),
     }),
   });

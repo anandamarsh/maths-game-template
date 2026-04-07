@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useIsCoarsePointer, useIsMobileLandscape } from "../hooks/useMediaQuery";
+import { useT } from "../i18n";
 import { SocialComments, SocialShare, openCommentsComposer } from "./Social";
 import AudioButton from "./AudioButton";
 import AutopilotIcon from "./AutopilotIcon";
+import LanguageSwitcher from "./LanguageSwitcher";
 import LevelButtons from "./LevelButtons";
 import NumericKeypad from "./NumericKeypad";
 import QuestionBox from "./QuestionBox";
@@ -72,6 +74,7 @@ export default function GameLayout({
   forceKeypadExpanded = false,
   children,
 }: GameLayoutProps) {
+  const t = useT();
   const isMobileLandscape = useIsMobileLandscape();
   const isCoarsePointer = useIsCoarsePointer();
   // Minimized by default on touch devices; expanded by default on desktop
@@ -89,7 +92,7 @@ export default function GameLayout({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Check out this maths game on Interactive Maths!",
+          title: t("social.shareTitle"),
           url: "https://interactive-maths.vercel.app/",
         });
       } catch { /* dismissed */ }
@@ -116,7 +119,7 @@ export default function GameLayout({
         <div className="social-drawer-header">
           {/* Add Comment on the left — opens compose area inside the iframe */}
           <button className="social-new-comment" onClick={() => openCommentsComposer()}>
-            + Add Comment
+            {t("toolbar.addComment")}
           </button>
           <button className="social-drawer-close" onClick={() => setCommentsOpen(false)}>
             <svg className="social-close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -135,7 +138,7 @@ export default function GameLayout({
       )}
       <div className={`social-share-drawer social-drawer ${shareDrawerOpen ? "is-open" : ""}`}>
         <div className="social-drawer-header">
-          <h2 className="m-0 text-sm font-black uppercase tracking-wider">Share</h2>
+          <h2 className="m-0 text-sm font-black uppercase tracking-wider">{t("toolbar.share")}</h2>
           <button className="social-drawer-close" onClick={() => setShareDrawerOpen(false)}>
             <svg className="social-close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -151,7 +154,7 @@ export default function GameLayout({
           <div className="w-10 h-10 shrink-0" aria-hidden="true" />
 
           {onRestart && (
-            <button onClick={onRestart} title="Restart"
+            <button onClick={onRestart} title={t("toolbar.restart")}
               className="arcade-button w-10 h-10 flex items-center justify-center p-2">
               <svg viewBox="0 0 24 24" fill="none" className="w-full h-full"
                 stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -163,7 +166,7 @@ export default function GameLayout({
           <AudioButton muted={muted} onToggle={onToggleMute} />
 
           {onCapture && (
-            <button onClick={onCapture} title="Screenshot"
+            <button onClick={onCapture} title={t("toolbar.screenshot")}
               className="arcade-button w-10 h-10 flex items-center justify-center p-2">
               <svg viewBox="0 0 24 24" fill="none" className="w-full h-full"
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -206,16 +209,18 @@ export default function GameLayout({
           className="social-launchers pointer-events-auto"
           style={!isCoarsePointer ? { top: "0.5rem" } : undefined}
         >
+          <LanguageSwitcher />
+
           {onQuestionDemo && (
             <AutopilotIcon
               onClick={onQuestionDemo}
               active={isQuestionDemo}
-              title="Show how to solve this question"
-              ariaLabel="Show how to solve this question"
+              title={t("toolbar.showSolve")}
+              ariaLabel={t("toolbar.showSolve")}
             />
           )}
 
-          <button onClick={handleShare} title="Share"
+          <button onClick={handleShare} title={t("toolbar.share")}
             className={`social-launcher arcade-button ${shareDrawerOpen ? "is-active" : ""}`}>
             <svg viewBox="0 0 24 24" fill="none" className="social-launcher-icon">
               <circle cx="18" cy="5" r="3" stroke="white" strokeWidth="2" />
@@ -226,7 +231,7 @@ export default function GameLayout({
             </svg>
           </button>
 
-          <button onClick={() => setCommentsOpen((o) => !o)} title="Comments"
+          <button onClick={() => setCommentsOpen((o) => !o)} title={t("toolbar.comments")}
             className={`social-launcher arcade-button ${commentsOpen ? "is-active" : ""}`}>
             <svg viewBox="0 0 24 24" fill="none" className="social-launcher-icon">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
@@ -237,11 +242,6 @@ export default function GameLayout({
       </div>
 
       {/* ── Rest: canvas (absolute) + floating bottom bar ───────────────── */}
-      {/*
-          The canvas is absolute so it always fills this area completely.
-          The bottom bar overlays on top — minimizing the calculator never
-          shifts the canvas content up or down.
-      */}
       <div className="relative flex-1 min-h-0 mx-2 mb-2">
 
         {/* Canvas — always fills the full rest area */}
