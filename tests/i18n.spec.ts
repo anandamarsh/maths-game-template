@@ -7,8 +7,7 @@ import { test, expect } from "@playwright/test";
 const LOCALE_CHECKS: Record<string, { tapAnywhere: string; restart: string; mute: string; share: string }> = {
   en: { tapAnywhere: "Tap anywhere!", restart: "Restart", mute: "Mute", share: "Share" },
   zh: { tapAnywhere: "点击任意位置！", restart: "重新开始", mute: "静音", share: "分享" },
-  es: { tapAnywhere: "¡Toca en cualquier lugar!", restart: "Reiniciar", mute: "Silenciar", share: "Compartir" },
-  ru: { tapAnywhere: "Нажмите куда-нибудь!", restart: "Начать заново", mute: "Без звука", share: "Поделиться" },
+  hi: { tapAnywhere: "कहीं भी टैप करें!", restart: "फिर से शुरू करें", mute: "म्यूट करें", share: "साझा करें" },
 };
 
 test.describe("i18n — Language Switching", () => {
@@ -35,27 +34,27 @@ test.describe("i18n — Language Switching", () => {
     await expect(globeBtn).toBeVisible({ timeout: 5000 });
   });
 
-  test("language dropdown opens and shows all built-in languages", async ({ page }) => {
+  test("language dropdown opens and shows only supported languages", async ({ page }) => {
     const globeBtn = page.locator('button[title="Language"]');
     await globeBtn.click();
 
-    // All 4 languages should be visible
+    // Only English, Chinese, and Hindi should be visible
     await expect(page.locator("text=English")).toBeVisible();
     await expect(page.locator("text=中文")).toBeVisible();
-    await expect(page.locator("text=Español")).toBeVisible();
-    await expect(page.locator("text=Русский")).toBeVisible();
-    // "Other..." option
-    await expect(page.getByText("Other...")).toBeVisible();
+    await expect(page.locator("text=हिन्दी")).toBeVisible();
+    await expect(page.locator("text=Español")).toHaveCount(0);
+    await expect(page.locator("text=Русский")).toHaveCount(0);
+    await expect(page.getByText("Other...")).toHaveCount(0);
   });
 
   for (const [locale, expected] of Object.entries(LOCALE_CHECKS)) {
     test(`switches to ${locale} and verifies UI text`, async ({ page }) => {
       // Open language dropdown
-      const globeBtn = page.locator('button[title="Language"], button[title="语言"], button[title="Idioma"], button[title="Язык"]');
+      const globeBtn = page.locator('button[title="Language"], button[title="语言"], button[title="भाषा"]');
       await globeBtn.click();
 
       // Get the locale name map
-      const names: Record<string, string> = { en: "English", zh: "中文", es: "Español", ru: "Русский" };
+      const names: Record<string, string> = { en: "English", zh: "中文", hi: "हिन्दी" };
       await page.getByText(names[locale]).click();
 
       // Wait for re-render
@@ -114,16 +113,14 @@ test.describe("i18n — Language Switching", () => {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
 
-    // Dropdown should be gone — "Other..." is only in the dropdown
-    await expect(page.getByText("Other...")).not.toBeVisible();
+    await expect(page.locator("text=English")).not.toBeVisible();
   });
 });
 
 test.describe("i18n — Level Complete Modal", () => {
-  test("shows translated text in session report modal (Spanish)", async ({ page }) => {
-    // Switch to Spanish first
+  test("shows translated text in session report modal (Hindi)", async ({ page }) => {
     await page.goto("/");
-    await page.evaluate(() => localStorage.setItem("lang", "es"));
+    await page.evaluate(() => localStorage.setItem("lang", "hi"));
     await page.reload();
     await page.waitForTimeout(500);
 
@@ -134,15 +131,15 @@ test.describe("i18n — Level Complete Modal", () => {
     }
 
     // Wait for autopilot to complete level 1 (should see the modal)
-    const modalHeading = page.locator("text=¡Nivel 1 completado!");
+    const modalHeading = page.locator("text=स्तर 1 पूरा!");
     await expect(modalHeading).toBeVisible({ timeout: 60000 });
 
     // Check translated labels
-    await expect(page.locator("text=Puntuación")).toBeVisible();
-    await expect(page.locator("text=Precisión")).toBeVisible();
-    await expect(page.locator("text=Huevos")).toBeVisible();
-    await expect(page.locator("text=Compartir informe")).toBeVisible();
-    await expect(page.locator("text=Siguiente nivel")).toBeVisible();
+    await expect(page.locator("text=स्कोर")).toBeVisible();
+    await expect(page.locator("text=सटीकता")).toBeVisible();
+    await expect(page.locator("text=अंडे")).toBeVisible();
+    await expect(page.locator("text=रिपोर्ट साझा करें")).toBeVisible();
+    await expect(page.locator("text=अगला स्तर")).toBeVisible();
   });
 });
 

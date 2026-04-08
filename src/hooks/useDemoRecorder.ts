@@ -1,14 +1,17 @@
 // src/hooks/useDemoRecorder.ts — Records demo video via getDisplayMedia + MediaRecorder
 
 import { useCallback, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
-export type RecordingPhase = "idle" | "requesting" | "intro" | "playing" | "outro" | "stopping";
+export type RecordingPhase = "idle" | "requesting" | "intro-prompt" | "intro" | "playing" | "outro" | "stopping";
 
 interface Callbacks {
   /** Called after intro slide completes — should reset game + start autopilot */
   onStartPlaying: () => void;
-  /** Called to ensure game audio is on for the recording */
-  ensureUnmuted: () => void;
+  /** Called to prepare audio state for the recording */
+  prepareAudio: () => void;
+  /** Called if recording is stopped or cancelled */
+  cleanupAudio: () => void;
 }
 
 export function useDemoRecorder(callbacksRef: React.RefObject<Callbacks>) {
@@ -22,14 +25,19 @@ export function useDemoRecorder(callbacksRef: React.RefObject<Callbacks>) {
       for (const track of streamRef.current.getTracks()) track.stop();
       streamRef.current = null;
     }
+    callbacksRef.current?.cleanupAudio();
     recorderRef.current = null;
     chunksRef.current = [];
     setRecordingPhase("idle");
-  }, []);
+  }, [callbacksRef]);
 
   const startRecording = useCallback(async () => {
     if (recorderRef.current) return; // already recording
-    setRecordingPhase("requesting");
+
+    // Switch the app to the intro scene first, then trigger the browser capture prompt.
+    flushSync(() => {
+      setRecordingPhase("intro-prompt");
+    });
 
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -77,12 +85,13 @@ export function useDemoRecorder(callbacksRef: React.RefObject<Callbacks>) {
       });
 
       recorderRef.current = recorder;
+
+      // Give the intro overlay a moment to paint before the first recorded frame.
+      await new Promise((resolve) => window.setTimeout(resolve, 280));
+
+      // Prepare audio state immediately before recording begins.
+      callbacksRef.current?.prepareAudio();
       recorder.start(1000);
-
-      // Ensure game audio is on
-      callbacksRef.current?.ensureUnmuted();
-
-      // Show intro slide
       setRecordingPhase("intro");
     } catch {
       cleanup();

@@ -7,7 +7,19 @@ import SessionReportModal from "../components/SessionReportModal";
 import TutorialHint from "../components/TutorialHint";
 import { useT } from "../i18n";
 import { useDemoRecorder } from "../hooks/useDemoRecorder";
-import { isMuted, playCorrect, playLevelComplete, playRipple, playWrong, shuffleMusic, startMusic, toggleMute } from "../sound";
+import {
+  fadeOutRecordingSoundtrack,
+  isMuted,
+  playCorrect,
+  playLevelComplete,
+  playRipple,
+  playWrong,
+  shuffleMusic,
+  startMusic,
+  startRecordingSoundtrack,
+  stopRecordingSoundtrack,
+  toggleMute,
+} from "../sound";
 import { getRainbowColor, makeRound, ripplePitch } from "../game/rippleGame";
 import { startSession, startQuestionTimer, logAttempt, buildSummary } from "../report/sessionLog";
 import type { SessionSummary, RipplePosition } from "../report/sessionLog";
@@ -26,6 +38,7 @@ const RIPPLE_DURATION_MS = 900;
 const EGGS_PER_ROUND = 2;
 const LEVEL_COUNT = 2;
 const AUTOPILOT_EMAIL = "amarsh.anand@gmail.com";
+const DEMO_RECORDING_EMAIL = "teacher@myschool.com";
 const IS_LOCALHOST_DEV = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
 type GamePhase = "tapping" | "answering" | "feedback" | "levelComplete";
@@ -66,7 +79,8 @@ export default function RippleScreen() {
 
   const demoRecorderCallbacksRef = useRef({
     onStartPlaying: () => {},
-    ensureUnmuted: () => {},
+    prepareAudio: () => {},
+    cleanupAudio: () => {},
   });
   const { recordingPhase, isRecording, startRecording, onIntroComplete, showOutro, onOutroComplete } =
     useDemoRecorder(demoRecorderCallbacksRef);
@@ -335,7 +349,7 @@ export default function RippleScreen() {
       gameState: { phase, targetTaps, tapCount, level, levelCount: LEVEL_COUNT },
       callbacksRef: autopilotCallbacksRef,
       canvasRef,
-      autopilotEmail: AUTOPILOT_EMAIL,
+      autopilotEmail: isRecording ? DEMO_RECORDING_EMAIL : AUTOPILOT_EMAIL,
     });
 
   // Always-current callbacks — updated every render, after deactivateAutopilot is available
@@ -362,9 +376,12 @@ export default function RippleScreen() {
       setCalcValue("");
       activateAutopilot();
     },
-    ensureUnmuted: () => {
-      if (isMuted()) setMuted(toggleMute());
-      ensureMusic();
+    prepareAudio: () => {
+      if (!isMuted()) setMuted(toggleMute());
+      startRecordingSoundtrack();
+    },
+    cleanupAudio: () => {
+      stopRecordingSoundtrack();
     },
   };
 
@@ -594,11 +611,18 @@ export default function RippleScreen() {
       <PhantomHand pos={phantomPos} />
 
       {/* Demo video recording overlays */}
+      {recordingPhase === "intro-prompt" && (
+        <DemoIntroOverlay type="intro" isStatic />
+      )}
       {recordingPhase === "intro" && (
         <DemoIntroOverlay type="intro" onComplete={onIntroComplete} />
       )}
-      {recordingPhase === "outro" && (
-        <DemoIntroOverlay type="outro" onComplete={onOutroComplete} />
+      {(recordingPhase === "outro" || recordingPhase === "stopping") && (
+        <DemoIntroOverlay
+          type="outro"
+          onComplete={onOutroComplete}
+          onFadeStart={() => fadeOutRecordingSoundtrack(1200)}
+        />
       )}
 
       {/* Recording indicator (pulsing red dot) */}

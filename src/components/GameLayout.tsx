@@ -181,15 +181,13 @@ export default function GameLayout({
             </button>
           )}
 
-          {onRecordDemo && (
+          {onRecordDemo && !isRecordingDemo && (
             <button onClick={onRecordDemo} title="Record demo video"
-              className="arcade-button w-10 h-10 flex items-center justify-center p-2"
-              style={isRecordingDemo ? { borderColor: "#ef4444", boxShadow: "0 0 12px rgba(239,68,68,0.5)" } : undefined}>
+              className="arcade-button w-10 h-10 flex items-center justify-center p-2">
               <svg viewBox="0 0 24 24" fill="none" className="w-full h-full"
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="4" width="13" height="16" rx="2" />
-                <path d="m22 7-5 3.5V14l5 3.5Z" fill={isRecordingDemo ? "#ef4444" : "none"} stroke={isRecordingDemo ? "#ef4444" : "white"} />
-                {isRecordingDemo && <circle cx="6" cy="8" r="2.5" fill="#ef4444" />}
+                <path d="m22 7-5 3.5V14l5 3.5Z" />
               </svg>
             </button>
           )}
