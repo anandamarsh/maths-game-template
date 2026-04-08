@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Local demo/video artifacts
+exports/
+tmp/
+
+# Test runner artifacts
+test-results/
