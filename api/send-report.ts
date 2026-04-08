@@ -17,6 +17,20 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function applyHtmlReplacements(
+  template: string,
+  replacements: Array<{ plain: string; html: string }>,
+): string {
+  let formatted = escapeHtml(template);
+
+  for (const { plain, html } of replacements.sort((a, b) => b.plain.length - a.plain.length)) {
+    if (!plain) continue;
+    formatted = formatted.split(escapeHtml(plain)).join(html);
+  }
+
+  return formatted;
+}
+
 function normalizeBody(body: unknown) {
   if (typeof body === "string") {
     try {
@@ -113,14 +127,29 @@ export default async function handler(req: any, res: any) {
     `This game is equivalent to <a href="${escapeHtml(curriculumIndexUrl)}"><strong>${escapeHtml(stageLabel)}</strong></a> on topic <a href="${escapeHtml(curriculumUrl)}"><strong>${escapeHtml(curriculumCode)} - ${escapeHtml(curriculumDescription)}</strong></a>.`;
   const regards = payload?.emailRegards || "Regards,";
 
-  // If translated strings were provided, the body text is plain (no HTML formatting).
-  // Wrap it in basic HTML. If not translated, bodyIntro already has HTML.
   const hasTranslatedStrings = !!payload?.emailBody;
   const formattedBody = hasTranslatedStrings
-    ? `<p>${escapeHtml(bodyIntro)}</p><p><a href="${escapeHtml(siteUrl)}">SeeMaths</a></p>`
+    ? `<p>${applyHtmlReplacements(bodyIntro, [
+        { plain: gameName, html: `<strong>${escapeHtml(gameName)}</strong>` },
+        { plain: "SeeMaths", html: `<a href="${escapeHtml(siteUrl)}">SeeMaths</a>` },
+        { plain: sessionTime, html: `<strong>${escapeHtml(sessionTime)}</strong>` },
+        { plain: sessionDate, html: `<strong>${escapeHtml(sessionDate)}</strong>` },
+        { plain: durationText, html: `<strong>${escapeHtml(durationText)}</strong>` },
+        { plain: scoreLine, html: `<strong>${escapeHtml(scoreLine)}</strong>` },
+        { plain: accuracy, html: `<strong>${escapeHtml(accuracy)}</strong>` },
+      ])}</p>`
     : `<p>${bodyIntro}</p>`;
   const formattedCurriculum = hasTranslatedStrings
-    ? `<p>${escapeHtml(curriculumParagraph)}</p><p><a href="${escapeHtml(curriculumIndexUrl)}">${escapeHtml(stageLabel)}</a><br /><a href="${escapeHtml(curriculumUrl)}">${escapeHtml(curriculumCode)} - ${escapeHtml(curriculumDescription)}</a></p>`
+    ? `<p>${applyHtmlReplacements(curriculumParagraph, [
+        {
+          plain: `${curriculumCode} - ${curriculumDescription}`,
+          html: `<a href="${escapeHtml(curriculumUrl)}"><strong>${escapeHtml(curriculumCode)} - ${escapeHtml(curriculumDescription)}</strong></a>`,
+        },
+        {
+          plain: stageLabel,
+          html: `<a href="${escapeHtml(curriculumIndexUrl)}"><strong>${escapeHtml(stageLabel)}</strong></a>`,
+        },
+      ])}</p>`
     : `<p>${curriculumParagraph}</p>`;
 
   const resendResponse = await fetch("https://api.resend.com/emails", {
