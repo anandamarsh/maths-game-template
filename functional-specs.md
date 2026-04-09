@@ -85,6 +85,7 @@ The top bar is a horizontal flex row divided into three sections: **left control
 | Restart | Arrow-path (circular refresh) SVG | Only when `onRestart` prop provided | Calls `onRestart()` |
 | Share | Share SVG | Always shown | Opens native share or social share UI |
 | Comments | Chat/comment SVG | Always shown | Opens DiscussIt iframe |
+| YouTube | YouTube logo | Shown when `manifest.json` contains valid `videoUrl` | Opens how-to-play modal; first-time speech bubble can be dismissed persistently |
 
 All buttons use the `arcade-button` CSS class (orange gradient, yellow border).
 Each button has a `title` attribute describing its action (e.g. `"Mute"`, `"Restart"`, `"Share"`, `"Comments"`).
@@ -606,6 +607,29 @@ All links share the Interactive Maths platform landing page URL.
 
 Sends a `postMessage` to the DiscussIt iframe to open the comment composition panel.
 
+### 18.4 YouTube walkthrough CTA
+
+- `GameLayout` fetches `/manifest.json` on mount and reads `videoUrl`.
+- The URL is converted into a YouTube embed URL.
+- When present, a YouTube launcher is shown next to the comments button.
+- The launcher button uses the same visual treatment as `see-maths`: transparent fill, yellow circular border, YouTube logo.
+- A first-time speech bubble is rendered either above or below the icon, depending on which position keeps it fully visible in the viewport.
+- The bubble tail must point back toward the icon from the nearest edge.
+- Bubble content follows the `see-maths` pattern:
+  - YouTube icon in a circular yellow ring
+  - copy from translation key `social.youtubePrompt`
+  - dismiss text from translation key `social.youtubeDismiss`
+- English source strings are:
+  - `First time? Look at a video on how to play.`
+  - `Don't show again`
+- The bubble is fixed at `310px` wide on mobile and desktop.
+- `see-maths` and `maths-game-template` may place the bubble on different sides of the icon if their launcher positions differ.
+- Dismissing the bubble writes `"true"` to localStorage key:
+  `maths-game-template:youtube-bubble-dismissed`
+- The icon remains visible after dismissal.
+- Pressing the icon opens a centered modal containing the embedded YouTube player.
+- The modal close control uses Material UI's `Close` icon rather than a text character.
+
 ---
 
 ## 19. Responsive Behaviour
@@ -649,6 +673,7 @@ Key fields:
 | `theme_color` | `"#0d1b35"` |
 | `start_url` | `"/"` |
 | `scope` | `"/"` |
+| `videoUrl` | YouTube walkthrough URL used by the in-game help modal |
 
 Icons: 192×192, 512×512 (`any` purpose), 512×512 (`maskable`), apple-touch-icon 180×180.
 

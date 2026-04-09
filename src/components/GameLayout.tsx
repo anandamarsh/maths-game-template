@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import CloseIcon from "@mui/icons-material/Close";
 import { useIsCoarsePointer, useIsMobileLandscape } from "../hooks/useMediaQuery";
 import { useT } from "../i18n";
 import { SocialComments, SocialShare, openCommentsComposer } from "./Social";
@@ -9,6 +10,28 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import LevelButtons from "./LevelButtons";
 import NumericKeypad from "./NumericKeypad";
 import QuestionBox from "./QuestionBox";
+
+const YOUTUBE_BUBBLE_DISMISSED_KEY = "maths-game-template:youtube-bubble-dismissed";
+const YOUTUBE_ICON_URL = "/youtube-circle-logo-svgrepo-com.svg";
+
+function readYouTubeBubbleDismissed() {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(YOUTUBE_BUBBLE_DISMISSED_KEY) === "true";
+}
+
+function toYouTubeEmbedUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const videoId = parsed.hostname.includes("youtu.be")
+      ? parsed.pathname.replace(/^\/+/, "")
+      : (parsed.searchParams.get("v") ??
+        (parsed.pathname.startsWith("/shorts/") ? parsed.pathname.split("/")[2] : null));
+    if (!videoId) return null;
+    return `https://www.youtube.com/embed/${videoId}`;
+  } catch {
+    return null;
+  }
+}
 
 interface GameLayoutProps {
   // Controls
@@ -88,6 +111,42 @@ export default function GameLayout({
   const effectiveCalcMinimized = forceKeypadExpanded ? false : calcMinimized;
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareDrawerOpen, setShareDrawerOpen] = useState(false);
+  const [youtubeBubbleDismissed, setYoutubeBubbleDismissed] = useState(readYouTubeBubbleDismissed);
+  const [youtubeEmbedUrl, setYoutubeEmbedUrl] = useState<string | null>(null);
+  const [youtubeModalOpen, setYoutubeModalOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/manifest.json", { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load manifest (${response.status})`);
+        }
+        return response.json() as Promise<{ videoUrl?: unknown }>;
+      })
+      .then((manifest) => {
+        if (cancelled) return;
+        const rawVideoUrl = typeof manifest.videoUrl === "string" ? manifest.videoUrl.trim() : "";
+        setYoutubeEmbedUrl(rawVideoUrl ? toYouTubeEmbedUrl(rawVideoUrl) : null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setYoutubeEmbedUrl(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      YOUTUBE_BUBBLE_DISMISSED_KEY,
+      youtubeBubbleDismissed ? "true" : "false",
+    );
+  }, [youtubeBubbleDismissed]);
 
   function toggleCalc() {
     setCalcMinimized((m) => !m);
@@ -152,6 +211,34 @@ export default function GameLayout({
         </div>
         <SocialShare />
       </div>
+
+      {youtubeModalOpen && youtubeEmbedUrl && (
+        <>
+          <div className="social-backdrop social-video-backdrop" onClick={() => setYoutubeModalOpen(false)} />
+          <div
+            className="social-video-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="How to play video"
+          >
+            <button
+              type="button"
+              className="social-video-modal-close"
+              aria-label="Close how to play video"
+              onClick={() => setYoutubeModalOpen(false)}
+            >
+              <CloseIcon className="social-video-modal-close-icon" aria-hidden="true" />
+            </button>
+            <iframe
+              src={youtubeEmbedUrl}
+              title="How to play video"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          </div>
+        </>
+      )}
 
       {/* ── Top bar overlay ─────────────────────────────────────────────── */}
       <div className="absolute inset-x-0 top-0 z-[60] h-20 pointer-events-none">
@@ -254,6 +341,56 @@ export default function GameLayout({
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
+
+          {youtubeEmbedUrl && (
+            <div className="social-video-cta">
+              {!youtubeBubbleDismissed && (
+                <div
+                  className="social-video-bubble"
+                  role="complementary"
+                  aria-label="How to play video prompt"
+                >
+                  <button
+                    type="button"
+                    className="social-video-bubble-link"
+                    onClick={() => setYoutubeModalOpen(true)}
+                  >
+                    <span className="social-video-bubble-icon-shell">
+                      <img
+                        src={YOUTUBE_ICON_URL}
+                        alt="YouTube"
+                        className="social-launcher-icon social-launcher-image"
+                      />
+                    </span>
+                    <span className="social-video-bubble-copy">
+                      {t("social.youtubePrompt")}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="social-video-bubble-dismiss"
+                    onClick={() => setYoutubeBubbleDismissed(true)}
+                  >
+                    {t("social.youtubeDismiss")}
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
+                title="Watch how to play"
+                aria-label="Watch how to play"
+                className={`social-video-button ${youtubeModalOpen ? "is-active" : ""}`}
+                onClick={() => setYoutubeModalOpen(true)}
+              >
+                <img
+                  src={YOUTUBE_ICON_URL}
+                  alt="YouTube"
+                  className="social-launcher-icon social-launcher-image"
+                />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

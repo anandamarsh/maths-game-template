@@ -114,6 +114,25 @@ Progress dots render as:
 - `<AutopilotIcon />` — if `onQuestionDemo` provided (shows active state when `isQuestionDemo`)
 - Share button (circle-circle-circle SVG icon)
 - Comments button (speech bubble SVG icon)
+- YouTube button (YouTube logo image) when `public/manifest.json` exposes a valid `videoUrl`
+
+**YouTube CTA wrapper** (`.social-video-cta`):
+- Wraps the YouTube launcher button
+- Positions a first-time speech bubble on the side of the icon that keeps the whole bubble visible on-screen
+- The bubble may appear above or below the icon depending on available space
+- The bubble tail should point back toward the icon from the edge nearest the icon
+- The launcher button itself matches the `see-maths` YouTube button styling with a transparent fill and yellow circular border
+- Bubble content matches the `see-maths` visual treatment:
+  - leading YouTube icon in a circular yellow ring
+  - copy comes from `t("social.youtubePrompt")`
+  - dismiss text comes from `t("social.youtubeDismiss")`
+- English source strings are:
+  - `First time? Look at a video on how to play.`
+  - `Don't show again`
+- The bubble is fixed at `310px` wide on mobile and desktop.
+- The bubble must not be clipped by the viewport; choose above/below placement accordingly.
+- Dismiss action stores `"true"` in `localStorage` key `maths-game-template:youtube-bubble-dismissed`
+- Dismissing only hides the bubble, not the icon
 
 On desktop (`!isCoarsePointer`), `.social-launchers` gets `top: 0.5rem` override.
 
@@ -159,6 +178,23 @@ async function handleShare() {
 }
 ```
 
+## YouTube video flow
+
+`GameLayout` fetches `/manifest.json` on mount and reads `videoUrl`.
+
+If a valid YouTube URL is found:
+- it is converted to an embed URL
+- the YouTube launcher is rendered
+- clicking the launcher opens a centered modal
+
+Modal behaviour:
+- dark backdrop
+- `80vw` by `80vh`
+- embedded `<iframe>`
+- red close button with Material UI's white `Close` icon in the top-right
+- closes via close button or backdrop click
+- the bubble body can also open the same modal
+
 ---
 
 ## Component dependencies
@@ -172,7 +208,8 @@ GameLayout
 ├── NumericKeypad        — DSEG7 calculator
 ├── QuestionBox          — question text box with shake animation
 ├── SocialShare          — Twitter/Facebook/WhatsApp/LinkedIn buttons
-└── SocialComments       — DiscussIt iframe
+├── SocialComments       — DiscussIt iframe
+└── YouTube walkthrough  — manifest-driven modal player
 ```
 
 ---

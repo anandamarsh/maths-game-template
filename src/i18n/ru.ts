@@ -55,6 +55,8 @@ const ru: Translations = {
   // Social
   "social.shareTitle": "Посмотрите эту математическую игру на Interactive Maths!",
   "social.commentsTitle": "Комментарии DiscussIt",
+  "social.youtubePrompt": "В первый раз? Посмотрите видео о том, как играть.",
+  "social.youtubeDismiss": "Больше не показывать",
 
   // PDF
   "pdf.title": "Ripple Touch",

@@ -55,6 +55,8 @@ const hi: Translations = {
   // Social
   "social.shareTitle": "Interactive Maths पर यह गणित का खेल देखें!",
   "social.commentsTitle": "DiscussIt टिप्पणियाँ",
+  "social.youtubePrompt": "पहली बार खेल रहे हैं? कैसे खेलें, यह वीडियो देखें।",
+  "social.youtubeDismiss": "दोबारा न दिखाएं",
 
   // PDF
   "pdf.title": "Ripple Touch",

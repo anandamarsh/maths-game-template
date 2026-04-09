@@ -57,6 +57,8 @@ export type Translations = {
   // Social
   "social.shareTitle": string;
   "social.commentsTitle": string;
+  "social.youtubePrompt": string;
+  "social.youtubeDismiss": string;
 
   // PDF
   "pdf.title": string;

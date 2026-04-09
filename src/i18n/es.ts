@@ -55,6 +55,8 @@ const es: Translations = {
   // Social
   "social.shareTitle": "¡Mira este juego de matemáticas en Interactive Maths!",
   "social.commentsTitle": "Comentarios de DiscussIt",
+  "social.youtubePrompt": "¿Es tu primera vez? Mira un video sobre cómo jugar.",
+  "social.youtubeDismiss": "No volver a mostrar",
 
   // PDF
   "pdf.title": "Ripple Touch",

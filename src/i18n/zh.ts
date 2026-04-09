@@ -55,6 +55,8 @@ const zh: Translations = {
   // Social
   "social.shareTitle": "快来看看 Interactive Maths 上的数学游戏！",
   "social.commentsTitle": "DiscussIt 评论",
+  "social.youtubePrompt": "第一次玩吗？先看一个如何玩的影片。",
+  "social.youtubeDismiss": "不再显示",
 
   // PDF
   "pdf.title": "涟漪触控",

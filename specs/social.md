@@ -1,6 +1,6 @@
-# Social Sharing & Comments
+# Social Sharing, Comments & Video
 
-**File:** `src/components/Social.tsx`
+**Files:** `src/components/Social.tsx`, `src/components/GameLayout.tsx`
 
 ---
 
@@ -44,6 +44,65 @@ Called by the "Add Comment" button in the comments drawer header.
 
 ---
 
+## YouTube walkthrough launcher
+
+The top-right launcher cluster also includes a YouTube icon button rendered by `GameLayout`.
+
+Behaviour:
+- The button sits directly next to the comments launcher.
+- The launcher button matches the `see-maths` YouTube treatment: transparent background, yellow circular border, YouTube logo centered.
+- The icon is always shown when `public/manifest.json` contains a valid `videoUrl`.
+- `GameLayout` fetches `/manifest.json` on mount, reads `videoUrl`, and converts it to a YouTube embed URL.
+- Supported source URL forms include `youtu.be`, standard watch URLs, and Shorts URLs.
+
+### First-time speech bubble
+
+The speech bubble should be positioned relative to the YouTube icon so the full bubble stays visible inside the viewport.
+
+Placement rule:
+- If there is enough space above the icon, the bubble may render above it.
+- If there is not enough space above, the bubble should render below it.
+- The chosen position should prevent the bubble from being clipped off-screen.
+- The pointer tail should flip to the edge that faces the icon.
+
+Project note:
+- In `see-maths`, the bubble is shown above the icon because the launcher sits near the bottom edge.
+- In this template, the bubble is shown below the icon because the launcher sits near the top edge.
+
+Bubble content matches the `see-maths` visual treatment:
+- leading circular YouTube icon inside the bubble
+- copy comes from i18n key `social.youtubePrompt`
+  - English source text: `First time? Look at a video on how to play.`
+- dismiss action comes from i18n key `social.youtubeDismiss`
+  - English source text: `Don't show again`
+
+Dismissal rules:
+- Clicking `Dismiss` hides the bubble.
+- Bubble dismissal is persisted in `localStorage` under:
+
+```ts
+"maths-game-template:youtube-bubble-dismissed"
+```
+
+- The YouTube icon remains visible after dismissal.
+
+### Video modal
+
+Pressing the YouTube icon opens a centered modal player.
+
+Modal rules:
+- Width: `80vw`
+- Height: `80vh`
+- Centered with `transform: translate(-50%, -50%)`
+- Contains an embedded YouTube `<iframe>`
+- Includes a top-right close button with:
+  - red background
+  - white `X` label
+- Clicking the darkened backdrop also closes the modal
+- The iframe uses the embed URL derived from `manifest.json` `videoUrl`
+
+---
+
 ## Social CSS (defined in `index.css`)
 
 All social classes use non-Tailwind CSS:
@@ -65,6 +124,54 @@ All social classes use non-Tailwind CSS:
 }
 ```
 
+### YouTube CTA
+
+```css
+.social-video-cta {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+
+.social-video-button {
+  width: 2.7rem;
+  height: 2.7rem;
+  padding: 0;
+  background: transparent;
+  border: 3px solid #fef08a;
+  border-radius: 9999px;
+}
+```
+
+The speech bubble uses the same visual language as `see-maths`, but is positioned below the icon in this project:
+
+```css
+.social-video-bubble {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.8rem);
+  width: 310px;
+  max-width: 310px;
+  border: 3px solid #fef08a;
+  border-radius: 1.2rem;
+  background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(2,6,23,0.98));
+}
+```
+
+The pointer tail is rendered on the top edge so it points upward to the icon.
+The bubble remains 310px wide on mobile and desktop.
+
+Reusable placement guidance:
+- When the bubble is rendered below the icon, anchor it with `top: calc(100% + gap)` and place the tail on the bubble's top edge.
+- When the bubble is rendered above the icon, anchor it with `bottom: calc(100% + gap)` and place the tail on the bubble's bottom edge.
+- In either case, keep the full `310px` bubble visible within the viewport.
+
+Inside the bubble:
+- `.social-video-bubble-link` lays out the icon shell and copy
+- `.social-video-bubble-icon-shell` matches the yellow ring used in `see-maths`
+- `.social-video-bubble-dismiss` remains a transparent text button
+- bubble text is translated through the existing `useT()` flow, so it changes with the selected language
+
 Mobile landscape override (`hover: none, pointer: coarse, orientation: landscape`):
 - `top: calc(env(safe-area-inset-top) + 0.5rem)`
 - `right: 0.4rem`
@@ -77,6 +184,14 @@ Mobile landscape override (`hover: none, pointer: coarse, orientation: landscape
   position: absolute; inset: 0;
   z-index: 2147483646;  /* max - 1 */
   background: transparent;
+}
+```
+
+Video modal backdrop adds a dark overlay:
+
+```css
+.social-video-backdrop {
+  background: rgba(2,6,23,0.72);
 }
 ```
 
@@ -94,6 +209,31 @@ Mobile landscape override (`hover: none, pointer: coarse, orientation: landscape
   transform: translateY(0); opacity: 1; pointer-events: auto;
 }
 ```
+
+### Video modal
+
+```css
+.social-video-modal {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 80vw; height: 80vh;
+  transform: translate(-50%, -50%);
+  border: 4px solid #fef08a;
+  border-radius: 1.2rem;
+  background: #000;
+}
+
+.social-video-modal-close {
+  position: absolute;
+  top: 0.75rem; right: 0.75rem;
+  background: #dc2626;
+  color: #fff;
+  border-radius: 999px;
+}
+```
+
+The close control uses an icon stroke, not a literal `"X"` character.
+The implementation uses Material UI's `Close` icon component.
 
 ### Share drawer (top-right, slides down)
 
@@ -176,3 +316,5 @@ async function handleShare() {
 
 The share button in the toolbar calls `handleShare()`.
 The comments button toggles `setCommentsOpen()`.
+The YouTube button toggles `setYoutubeModalOpen(true)`.
+The bubble body also opens the video modal when pressed.
