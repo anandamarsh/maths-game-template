@@ -252,13 +252,6 @@ export default function RippleScreen() {
         gamePhase: "normal",
         ripplePositions: [...roundRipplesRef.current],
       });
-      sendEmbeddedAnalyticsEvent("question_answered", {
-        level,
-        correct: isCorrect,
-        correctAnswer: correct,
-        childAnswer: answer,
-        gamePhase: "normal",
-      });
     }
 
     if (isCorrect) {
