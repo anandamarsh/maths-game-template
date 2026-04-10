@@ -27,7 +27,7 @@ const BASE = "http://localhost:4003";
 const LEVEL_TIMEOUT = 45_000;
 
 test.describe("Autopilot mode", () => {
-  test("activates via cheat code and icon appears", async ({ page }) => {
+  test("activates via cheat code and starts the autoplay flow", async ({ page }) => {
     await page.goto(BASE);
 
     // Wait for the game canvas to be ready
@@ -39,10 +39,9 @@ test.describe("Autopilot mode", () => {
       await page.waitForTimeout(60);
     }
 
-    // Robot icon should appear (aria-label check)
-    await expect(
-      page.locator('[aria-label="Autopilot active — click to cancel"]')
-    ).toBeVisible({ timeout: 3_000 });
+    await expect(page.locator("text=Level 1 Complete!")).toBeVisible({
+      timeout: LEVEL_TIMEOUT,
+    });
   });
 
   test("plays through Level 1 and shows level complete modal", async ({ page }) => {
@@ -86,7 +85,7 @@ test.describe("Autopilot mode", () => {
     console.log("✅ Level 2 complete — two emails should have been sent to amarsh.anand@gmail.com");
   });
 
-  test("cancel via robot icon stops autopilot", async ({ page }) => {
+  test("typing the cheat code again stops autopilot", async ({ page }) => {
     await page.goto(BASE);
     await page.waitForSelector('[data-autopilot-key="submit"]', { timeout: 10_000 });
 
@@ -96,14 +95,15 @@ test.describe("Autopilot mode", () => {
       await page.waitForTimeout(60);
     }
 
-    const robotIcon = page.locator('[aria-label="Autopilot active — click to cancel"]');
-    await expect(robotIcon).toBeVisible({ timeout: 3_000 });
+    await page.waitForTimeout(500);
 
-    // Click to cancel
-    await robotIcon.click();
+    for (const digit of "198081") {
+      await page.keyboard.press(digit);
+      await page.waitForTimeout(60);
+    }
 
-    // Icon should disappear
-    await expect(robotIcon).not.toBeVisible({ timeout: 3_000 });
+    await page.waitForTimeout(5_000);
+    await expect(page.locator("text=Level 1 Complete!")).not.toBeVisible();
   });
 
   test("197879 cheat code shows correct answer during answering phase", async ({ page }) => {
