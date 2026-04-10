@@ -26,6 +26,7 @@ import type { SessionSummary, RipplePosition } from "../report/sessionLog";
 import { useCheatCodes } from "../hooks/useCheatCode";
 import { useAutopilot } from "../hooks/useAutopilot";
 import type { AutopilotCallbacks, ModalAutopilotControls } from "../hooks/useAutopilot";
+import { sendEmbeddedAnalyticsEvent } from "../utils/embeddedAnalytics";
 
 interface Ripple {
   id: number;
@@ -251,6 +252,13 @@ export default function RippleScreen() {
         gamePhase: "normal",
         ripplePositions: [...roundRipplesRef.current],
       });
+      sendEmbeddedAnalyticsEvent("question_answered", {
+        level,
+        correct: isCorrect,
+        correctAnswer: correct,
+        childAnswer: answer,
+        gamePhase: "normal",
+      });
     }
 
     if (isCorrect) {
@@ -290,6 +298,17 @@ export default function RippleScreen() {
           levelCompleted: true,
           monsterRoundCompleted: false,
         });
+        sendEmbeddedAnalyticsEvent("level_completed", {
+          level,
+          normalEggs: EGGS_PER_ROUND,
+          monsterEggs: 0,
+        });
+        if (level >= LEVEL_COUNT) {
+          sendEmbeddedAnalyticsEvent("game_completed", {
+            level,
+            totalLevels: LEVEL_COUNT,
+          });
+        }
         setSessionSummary(summary);
         setPhase("levelComplete");
       } else {
