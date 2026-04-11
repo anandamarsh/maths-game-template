@@ -97,8 +97,11 @@ function LevelCompleteReportActions({
   return (
     <div className="mx-auto mt-5 w-full max-w-xl">
       {demoMode ? (
-        <div className="mb-4 rounded-2xl border border-yellow-300/30 bg-yellow-400/10 px-4 py-3 text-left text-sm text-yellow-100">
-          Demo mode is on. Please leave a quick comment after playing and email this report to yourself before you exit.
+        <div
+          className="mb-4 rounded-2xl px-4 py-3 text-left text-sm font-bold text-white"
+          style={{ background: "#f97316", border: "1px solid #ea580c" }}
+        >
+          Enter your email to receive your report.
         </div>
       ) : null}
       {!isMobileLandscape && (
@@ -159,7 +162,9 @@ function LevelCompleteReportActions({
               setEmailError(false);
             }
           }}
-          placeholder={t("report.emailPlaceholder")}
+          placeholder={
+            demoMode ? "Enter your email to receive your report" : t("report.emailPlaceholder")
+          }
           className="min-w-0 flex-1 rounded-2xl border-2 border-cyan-300 bg-slate-900/80 px-4 py-3 text-base text-white outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-200"
         />
         <button

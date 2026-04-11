@@ -520,11 +520,6 @@ export default function RippleScreen() {
   const questionContent = (
     <div className="flex flex-col gap-1">
       <span>{questionText}</span>
-      {demo.showAnswers && phase !== "levelComplete" ? (
-        <span className="text-xs font-black uppercase tracking-[0.14em] text-yellow-300">
-          Demo answer: {targetTaps}
-        </span>
-      ) : null}
     </div>
   );
 
@@ -546,10 +541,15 @@ export default function RippleScreen() {
         questionShake={questionShake}
         progress={eggsCollected}
         progressTotal={EGGS_PER_ROUND}
+        calculatorTopBanner={
+          demo.showAnswers && phase !== "levelComplete" ? (
+            <span>Answer: {targetTaps}</span>
+          ) : null
+        }
         demoBanner={
           demo.enabled ? (
-            <div className="text-xs font-black uppercase tracking-[0.16em]">
-              Demo Mode · {EGGS_PER_ROUND} eggs only · answers visible · please comment and email your report
+            <div className="text-2xl font-black uppercase tracking-[0.16em]">
+              Demo Mode
             </div>
           ) : null
         }

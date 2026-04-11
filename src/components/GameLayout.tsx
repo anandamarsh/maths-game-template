@@ -46,6 +46,7 @@ interface GameLayoutProps {
   onKeypadSubmit?: () => void;
   canSubmit?: boolean;
   demoBanner?: ReactNode;
+  calculatorTopBanner?: ReactNode;
 
   // Question bar (optional)
   question?: ReactNode;
@@ -90,6 +91,7 @@ export default function GameLayout({
   onKeypadSubmit,
   canSubmit = false,
   demoBanner,
+  calculatorTopBanner,
   question,
   questionShake = false,
   progress,
@@ -414,14 +416,27 @@ export default function GameLayout({
         </div>
 
         {demoBanner ? (
-          <div className="pointer-events-none absolute left-2 right-2 top-2 z-[58] flex justify-center">
+          <div
+            className={`pointer-events-none absolute z-[58] flex ${
+              isMobileLandscape
+                ? "bottom-20 left-0 top-0 w-14 items-center justify-start"
+                : "left-2 right-2 top-2 justify-center"
+            }`}
+          >
             <div
-              className="max-w-2xl rounded-2xl px-4 py-2 text-center"
+              className={
+                isMobileLandscape
+                  ? "rounded-r-2xl px-2 py-4 text-center"
+                  : "max-w-2xl rounded-2xl px-4 py-2 text-center"
+              }
               style={{
-                background: "rgba(250,204,21,0.14)",
-                border: "1px solid rgba(250,204,21,0.42)",
-                color: "#fef08a",
-                boxShadow: "0 0 22px rgba(250,204,21,0.14)",
+                background: "#f97316",
+                border: "1px solid #ea580c",
+                color: "#ffffff",
+                boxShadow: "0 0 22px rgba(249,115,22,0.28)",
+                writingMode: isMobileLandscape ? "vertical-rl" : undefined,
+                textOrientation: isMobileLandscape ? "mixed" : undefined,
+                transform: isMobileLandscape ? "rotate(180deg)" : undefined,
               }}
             >
               {demoBanner}
@@ -442,15 +457,29 @@ export default function GameLayout({
           )}
 
           {/* Calculator */}
-          <NumericKeypad
-            value={keypadValue}
-            onChange={onKeypadChange}
-            onKeyInput={onKeypadKeyInput}
-            onSubmit={handleKeypadSubmit}
-            canSubmit={canSubmit}
-            minimized={effectiveCalcMinimized}
-            onToggleMinimized={toggleCalc}
-          />
+          <div className="flex min-h-0 flex-col self-start">
+            {calculatorTopBanner ? (
+              <div
+                className="arcade-panel rounded-b-none border-b-0 px-3 py-2 text-center text-[1rem] font-bold leading-tight text-white"
+                style={{
+                  background: "#f97316",
+                  borderColor: "#ea580c",
+                  color: "#ffffff",
+                }}
+              >
+                {calculatorTopBanner}
+              </div>
+            ) : null}
+            <NumericKeypad
+              value={keypadValue}
+              onChange={onKeypadChange}
+              onKeyInput={onKeypadKeyInput}
+              onSubmit={handleKeypadSubmit}
+              canSubmit={canSubmit}
+              minimized={effectiveCalcMinimized}
+              onToggleMinimized={toggleCalc}
+            />
+          </div>
         </div>
       </div>
     </div>
