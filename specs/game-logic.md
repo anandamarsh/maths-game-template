@@ -120,3 +120,30 @@ The unit tests verify:
 - helper functions such as `ripplePitch` and `getRainbowColor` remain stable
 
 Playwright continues to verify the full player flow end to end.
+
+## Input and cheat-code contract
+
+The template spec is the reference pattern future keypad-driven maths games
+should copy.
+
+- Hardware keyboard digits and on-screen keypad digits must both feed the same
+  cheat-code buffer.
+- `198081` must clear the visible keypad display and start continuous autopilot.
+- `197879` must reveal/fill the correct answer and submit it.
+- Trigger digits must not remain visible in the display after a cheat code
+  fires.
+
+Implementation shape:
+
+```ts
+const { processCheatKey } = useCheatCodes({
+  "197879": revealAndSubmitAnswer,
+  "198081": toggleContinuousAutopilot,
+});
+
+function handleKeypadCheatInput(key: string): boolean {
+  return processCheatKey(key);
+}
+```
+
+Then pass `handleKeypadCheatInput` into the keypad via `onKeyInput`.

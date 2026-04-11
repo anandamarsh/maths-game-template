@@ -14,6 +14,7 @@ attributes so autopilot can find and click them by key name.
 interface NumericKeypadProps {
   value: string;                      // controlled display value
   onChange?: (v: string) => void;     // called on every key press
+  onKeyInput?: (key: string) => boolean; // optional pre-handler for keypad digits
   onSubmit?: () => void;              // called when submit (✓) is pressed
   canSubmit?: boolean;                // default false; disables submit when false
   minimized: boolean;                 // controlled from GameLayout
@@ -123,6 +124,7 @@ function press(key: string) {
   if (!onChange) return;
   playKeyClick();      // tick SFX
   flashKey(key);       // 140ms highlight
+  if (onKeyInput?.(key)) return;
 
   if (key === "⌫") { onChange(value.slice(0, -1)); return; }
   if (key === "±") {
@@ -140,6 +142,10 @@ function press(key: string) {
   else onChange(`${value}${key}`);
 }
 ```
+
+`onKeyInput` is the required integration point for cheat-code systems. If it
+returns `true`, the keypad must stop there and not append the digit to the
+display. This keeps mobile behavior aligned with hardware-keyboard behavior.
 
 ---
 
@@ -167,6 +173,8 @@ QuestionBox) toggles the grid.
 
 1. `GameLayout` owns the `calcMinimized` state and passes it as `minimized`.
 2. The parent (`RippleScreen`) owns `calcValue` and `setCalcValue`.
-3. `forceKeypadExpanded={isAutopilot && phase === "answering"}` in GameLayout keeps
+3. The parent should pass `onKeyInput={handleKeypadCheatInput}` so mobile keypad
+   digits can trigger the same cheat/autopilot buffer as desktop keyboards.
+4. `forceKeypadExpanded={isAutopilot && phase === "answering"}` in GameLayout keeps
    the grid visible while autopilot types the answer.
-4. The autopilot clicks buttons via `el.click()` which calls `press()` normally.
+5. The autopilot clicks buttons via `el.click()` which calls `press()` normally.
