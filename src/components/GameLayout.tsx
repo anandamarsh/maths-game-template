@@ -430,7 +430,7 @@ export default function GameLayout({
                   : "max-w-2xl rounded-2xl px-5 py-1.5 text-center"
               }
               style={{
-                background: "rgba(30, 64, 175, 0.88)",
+                background: "#09104c",
                 border: "1px solid rgba(96, 165, 250, 0.75)",
                 color: "#ffffff",
                 boxShadow: "0 0 18px rgba(59,130,246,0.22)",
