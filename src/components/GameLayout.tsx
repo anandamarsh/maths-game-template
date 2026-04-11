@@ -419,24 +419,23 @@ export default function GameLayout({
           <div
             className={`pointer-events-none absolute z-[58] flex ${
               isMobileLandscape
-                ? "bottom-20 left-0 top-0 w-14 items-center justify-start"
+                ? "bottom-20 left-2 top-0 w-12 items-center justify-start"
                 : "left-2 right-2 top-2 justify-center"
             }`}
           >
             <div
               className={
                 isMobileLandscape
-                  ? "rounded-r-2xl px-2 py-4 text-center"
-                  : "max-w-2xl rounded-2xl px-4 py-2 text-center"
+                  ? "rounded-2xl px-1.5 py-3 text-center"
+                  : "max-w-2xl rounded-2xl px-5 py-1.5 text-center"
               }
               style={{
-                background: "#f97316",
-                border: "1px solid #ea580c",
+                background: "rgba(30, 64, 175, 0.88)",
+                border: "1px solid rgba(96, 165, 250, 0.75)",
                 color: "#ffffff",
-                boxShadow: "0 0 22px rgba(249,115,22,0.28)",
+                boxShadow: "0 0 18px rgba(59,130,246,0.22)",
                 writingMode: isMobileLandscape ? "vertical-rl" : undefined,
-                textOrientation: isMobileLandscape ? "mixed" : undefined,
-                transform: isMobileLandscape ? "rotate(180deg)" : undefined,
+                textOrientation: isMobileLandscape ? "upright" : undefined,
               }}
             >
               {demoBanner}

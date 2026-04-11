@@ -548,7 +548,7 @@ export default function RippleScreen() {
         }
         demoBanner={
           demo.enabled ? (
-            <div className="text-2xl font-black uppercase tracking-[0.16em]">
+            <div className="text-base font-black uppercase tracking-[0.12em]">
               Demo Mode
             </div>
           ) : null
