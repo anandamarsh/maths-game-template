@@ -153,7 +153,7 @@ function LevelCompleteReportActions({
             }
           }}
           placeholder={t("report.emailPlaceholder")}
-          className="min-w-0 flex-1 rounded-2xl border-2 border-cyan-300 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-200"
+          className="min-w-0 flex-1 rounded-2xl border-2 border-cyan-300 bg-slate-900/80 px-4 py-3 text-base text-white outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-200"
         />
         <button
           type="button"
