@@ -147,6 +147,10 @@ function press(key: string) {
 returns `true`, the keypad must stop there and not append the digit to the
 display. This keeps mobile behavior aligned with hardware-keyboard behavior.
 
+`NumericKeypad` itself does not decide whether to stay open after submit. That
+behavior is owned by `GameLayout`, which may collapse the keypad again after the
+submit/fire action.
+
 ---
 
 ## Collapse/expand animation
@@ -177,4 +181,6 @@ QuestionBox) toggles the grid.
    digits can trigger the same cheat/autopilot buffer as desktop keyboards.
 4. `forceKeypadExpanded={isAutopilot && phase === "answering"}` in GameLayout keeps
    the grid visible while autopilot types the answer.
-5. The autopilot clicks buttons via `el.click()` which calls `press()` normally.
+5. In mobile landscape, pressing submit/fire should re-minimize the keypad after
+   the submit callback runs.
+6. The autopilot clicks buttons via `el.click()` which calls `press()` normally.

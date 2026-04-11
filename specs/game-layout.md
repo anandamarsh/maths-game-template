@@ -23,6 +23,7 @@ interface GameLayoutProps {
   // Keypad — fully controlled from parent
   keypadValue: string;
   onKeypadChange?: (v: string) => void;
+  onKeypadKeyInput?: (key: string) => boolean;
   onKeypadSubmit?: () => void;
   canSubmit?: boolean;           // default false
 
@@ -160,6 +161,18 @@ const effectiveCalcMinimized = forceKeypadExpanded ? false : calcMinimized;
 ```
 
 Clicking either the `QuestionBox` or the keypad display toggles `calcMinimized`.
+
+## Submit behavior on mobile landscape
+
+`GameLayout` owns the post-submit keypad behavior.
+
+- when `onKeypadSubmit` fires in mobile landscape, `GameLayout` must set
+  `calcMinimized=true`
+- this applies to both human taps on the fire button and autopilot clicks on the
+  same submit control
+- `forceKeypadExpanded` may still temporarily override the visual state while
+  the game remains in an answering/autopilot phase, but once that phase clears,
+  the keypad should return to the minimized state instead of staying open
 
 ---
 
