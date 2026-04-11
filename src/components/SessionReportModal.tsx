@@ -13,10 +13,12 @@ const EGG_INDICES = Array.from({ length: EGGS_PER_LEVEL }, (_, i) => i);
 function LevelCompleteReportActions({
   summary,
   isMobileLandscape,
+  demoMode = false,
   autopilotControlsRef,
 }: {
   summary: SessionSummary;
   isMobileLandscape: boolean;
+  demoMode?: boolean;
   autopilotControlsRef?: React.MutableRefObject<ModalAutopilotControls | null>;
 }) {
   const t = useT();
@@ -94,6 +96,11 @@ function LevelCompleteReportActions({
 
   return (
     <div className="mx-auto mt-5 w-full max-w-xl">
+      {demoMode ? (
+        <div className="mb-4 rounded-2xl border border-yellow-300/30 bg-yellow-400/10 px-4 py-3 text-left text-sm text-yellow-100">
+          Demo mode is on. Please leave a quick comment after playing and email this report to yourself before you exit.
+        </div>
+      ) : null}
       {!isMobileLandscape && (
         <div className="grid grid-cols-3 gap-2.5">
           <div className="rounded-2xl border border-emerald-300/20 bg-slate-800/70 px-3 py-3">
@@ -182,11 +189,12 @@ interface Props {
   level: number;
   onClose: () => void;
   onNextLevel?: () => void;
+  demoMode?: boolean;
   /** When provided (autopilot mode), exposes email controls to the autopilot engine */
   autopilotControlsRef?: React.MutableRefObject<ModalAutopilotControls | null>;
 }
 
-export default function SessionReportModal({ summary, level, onClose, onNextLevel, autopilotControlsRef }: Props) {
+export default function SessionReportModal({ summary, level, onClose, onNextLevel, demoMode = false, autopilotControlsRef }: Props) {
   const t = useT();
   const { locale } = useLocale();
   const isMobileLandscape = useIsMobileLandscape();
@@ -255,6 +263,7 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
         <LevelCompleteReportActions
           summary={summary}
           isMobileLandscape={isMobileLandscape}
+          demoMode={demoMode}
           autopilotControlsRef={autopilotControlsRef}
         />
 

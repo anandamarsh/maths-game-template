@@ -27,6 +27,7 @@ import { useCheatCodes } from "../hooks/useCheatCode";
 import { useAutopilot } from "../hooks/useAutopilot";
 import type { AutopilotCallbacks, ModalAutopilotControls } from "../hooks/useAutopilot";
 import { sendEmbeddedAnalyticsEvent } from "../utils/embeddedAnalytics";
+import { getDemoConfig } from "../demoMode";
 
 interface Ripple {
   id: number;
@@ -46,6 +47,7 @@ type GamePhase = "tapping" | "answering" | "feedback" | "levelComplete";
 
 export default function RippleScreen() {
   const t = useT();
+  const demo = getDemoConfig();
   const [ripples, setRipples] = useState<Ripple[]>([]);
   const [calcValue, setCalcValue] = useState("");
   const [muted, setMuted] = useState(isMuted());
@@ -515,6 +517,17 @@ export default function RippleScreen() {
     questionText = t("game.levelComplete");
   }
 
+  const questionContent = (
+    <div className="flex flex-col gap-1">
+      <span>{questionText}</span>
+      {demo.showAnswers && phase !== "levelComplete" ? (
+        <span className="text-xs font-black uppercase tracking-[0.14em] text-yellow-300">
+          Demo answer: {targetTaps}
+        </span>
+      ) : null}
+    </div>
+  );
+
   return (
     <>
       <GameLayout
@@ -529,10 +542,17 @@ export default function RippleScreen() {
         onKeypadKeyInput={handleKeypadCheatInput}
         onKeypadSubmit={phase === "answering" ? () => handleKeypadSubmit() : undefined}
         canSubmit={phase === "answering" && calcValue.length > 0}
-        question={questionText}
+        question={questionContent}
         questionShake={questionShake}
         progress={eggsCollected}
         progressTotal={EGGS_PER_ROUND}
+        demoBanner={
+          demo.enabled ? (
+            <div className="text-xs font-black uppercase tracking-[0.16em]">
+              Demo Mode · {EGGS_PER_ROUND} eggs only · answers visible · please comment and email your report
+            </div>
+          ) : null
+        }
         levelCount={LEVEL_COUNT}
         currentLevel={level}
         unlockedLevel={unlockedLevel}
@@ -601,6 +621,7 @@ export default function RippleScreen() {
           <SessionReportModal
             summary={sessionSummary}
             level={level}
+            demoMode={demo.enabled}
             onClose={handleReportClose}
             onNextLevel={level < LEVEL_COUNT ? handleNextLevel : undefined}
             autopilotControlsRef={isAutopilot ? modalControlsRef : undefined}

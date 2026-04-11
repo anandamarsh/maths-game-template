@@ -45,6 +45,7 @@ interface GameLayoutProps {
   onKeypadKeyInput?: (key: string) => boolean;
   onKeypadSubmit?: () => void;
   canSubmit?: boolean;
+  demoBanner?: ReactNode;
 
   // Question bar (optional)
   question?: ReactNode;
@@ -88,6 +89,7 @@ export default function GameLayout({
   onKeypadKeyInput,
   onKeypadSubmit,
   canSubmit = false,
+  demoBanner,
   question,
   questionShake = false,
   progress,
@@ -410,6 +412,22 @@ export default function GameLayout({
         <div className="absolute inset-0 rounded-xl overflow-hidden">
           {children}
         </div>
+
+        {demoBanner ? (
+          <div className="pointer-events-none absolute left-2 right-2 top-2 z-[58] flex justify-center">
+            <div
+              className="max-w-2xl rounded-2xl px-4 py-2 text-center"
+              style={{
+                background: "rgba(250,204,21,0.14)",
+                border: "1px solid rgba(250,204,21,0.42)",
+                color: "#fef08a",
+                boxShadow: "0 0 22px rgba(250,204,21,0.14)",
+              }}
+            >
+              {demoBanner}
+            </div>
+          </div>
+        ) : null}
 
         {/* Bottom overlay — floats over canvas, anchored to bottom */}
         <div className="absolute bottom-0 left-0 right-0 flex flex-row items-stretch gap-2">

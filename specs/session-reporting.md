@@ -95,6 +95,16 @@ export function clearSession(): void
 export function getAttemptCount(): number
 ```
 
+## Demo mode expectations
+
+When demo mode is enabled:
+
+- the report modal must show a clear callout that demo mode is active
+- the callout must ask the tester to leave a comment and email the report to
+  themselves
+- the reporting flow still uses the same PDF/share/email implementation; demo
+  mode changes the guidance, not the delivery mechanism
+
 ---
 
 ## PDF generation (`generatePdf.ts`)

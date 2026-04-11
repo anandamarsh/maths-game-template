@@ -174,6 +174,20 @@ Clicking either the `QuestionBox` or the keypad display toggles `calcMinimized`.
   the game remains in an answering/autopilot phase, but once that phase clears,
   the keypad should return to the minimized state instead of staying open
 
+## Demo banner
+
+`GameLayout` accepts an optional `demoBanner` node from the screen so the game
+can expose a uniform demo-mode treatment without hard-coding game-specific copy
+into the shared layout.
+
+- the banner should sit above the playfield
+- it should remain visible while demo mode is enabled
+- template copy sets the visual standard:
+  - `Demo Mode`
+  - shortened target
+  - answers visible
+  - prompt to comment and email the report
+
 ---
 
 ## Share handler

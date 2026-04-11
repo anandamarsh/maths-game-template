@@ -147,3 +147,24 @@ function handleKeypadCheatInput(key: string): boolean {
 ```
 
 Then pass `handleKeypadCheatInput` into the keypad via `onKeyInput`.
+
+## Demo mode contract
+
+The template is also the reference implementation for cross-game demo mode.
+
+- `?demo=1` enables demo mode and persists it in `localStorage`.
+- `?demo=0` disables demo mode and clears the stored flag.
+- If the query string is absent, the game falls back to the stored demo flag so
+  refreshes and installed-PWA launches keep the same mode.
+- See Maths is expected to forward the `demo` query parameter when it launches
+  the game.
+- While demo mode is enabled:
+  - the game shows a persistent `Demo Mode` banner
+  - the correct answer is visible during play
+  - the completion target is reduced to the demo target for that game
+  - the end-of-level report explicitly asks the tester to leave a comment and
+    email the report to themselves
+
+Future keypad-driven maths games should copy this contract directly and expose a
+small `getDemoConfig()` helper rather than duplicating ad hoc query-string code
+inside the main screen component.
