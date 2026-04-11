@@ -42,6 +42,7 @@ interface GameLayoutProps {
   // Keypad — fully controlled; pass onChange to make buttons live
   keypadValue: string;
   onKeypadChange?: (v: string) => void;
+  onKeypadKeyInput?: (key: string) => boolean;
   onKeypadSubmit?: () => void;
   canSubmit?: boolean;
 
@@ -84,6 +85,7 @@ export default function GameLayout({
   onRestart,
   keypadValue,
   onKeypadChange,
+  onKeypadKeyInput,
   onKeypadSubmit,
   canSubmit = false,
   question,
@@ -418,6 +420,7 @@ export default function GameLayout({
           <NumericKeypad
             value={keypadValue}
             onChange={onKeypadChange}
+            onKeyInput={onKeypadKeyInput}
             onSubmit={onKeypadSubmit}
             canSubmit={canSubmit}
             minimized={effectiveCalcMinimized}

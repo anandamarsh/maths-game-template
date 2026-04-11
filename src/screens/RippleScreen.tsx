@@ -399,7 +399,7 @@ export default function RippleScreen() {
 
   // ── Cheat codes ──────────────────────────────────────────────────────────
 
-  useCheatCodes({
+  const { processCheatKey } = useCheatCodes({
     // 197879 → instantly reveal and submit the correct answer
     "197879": () => {
       if (phase !== "answering") return;
@@ -420,6 +420,10 @@ export default function RippleScreen() {
       }
     },
   });
+
+  function handleKeypadCheatInput(key: string): boolean {
+    return processCheatKey(key);
+  }
 
   function handleSingleQuestionDemo() {
     clearDemoState();
@@ -522,6 +526,7 @@ export default function RippleScreen() {
         isRecordingDemo={isRecording}
         keypadValue={calcValue}
         onKeypadChange={setCalcValue}
+        onKeypadKeyInput={handleKeypadCheatInput}
         onKeypadSubmit={phase === "answering" ? () => handleKeypadSubmit() : undefined}
         canSubmit={phase === "answering" && calcValue.length > 0}
         question={questionText}

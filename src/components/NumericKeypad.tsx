@@ -7,6 +7,7 @@ const DISPLAY_FONT_SIZE = "2.1rem";
 interface NumericKeypadProps {
   value: string;
   onChange?: (v: string) => void;
+  onKeyInput?: (key: string) => boolean;
   onSubmit?: () => void;
   canSubmit?: boolean;
   /** Controlled from outside (GameLayout lifts this state) */
@@ -17,6 +18,7 @@ interface NumericKeypadProps {
 export default function NumericKeypad({
   value,
   onChange,
+  onKeyInput,
   onSubmit,
   canSubmit = false,
   minimized,
@@ -40,6 +42,7 @@ export default function NumericKeypad({
     if (!onChange) return;
     playKeyClick();
     flashKey(key);
+    if (onKeyInput?.(key)) return;
     if (key === "⌫") { onChange(value.slice(0, -1)); return; }
     if (key === "±") {
       if (value.startsWith("-")) onChange(value.slice(1));
