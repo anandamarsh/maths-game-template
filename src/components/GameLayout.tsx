@@ -154,6 +154,13 @@ export default function GameLayout({
     setCalcMinimized((m) => !m);
   }
 
+  function handleKeypadSubmit() {
+    onKeypadSubmit?.();
+    if (isMobileLandscape) {
+      setCalcMinimized(true);
+    }
+  }
+
   async function handleShare() {
     if (navigator.share) {
       try {
@@ -421,7 +428,7 @@ export default function GameLayout({
             value={keypadValue}
             onChange={onKeypadChange}
             onKeyInput={onKeypadKeyInput}
-            onSubmit={onKeypadSubmit}
+            onSubmit={handleKeypadSubmit}
             canSubmit={canSubmit}
             minimized={effectiveCalcMinimized}
             onToggleMinimized={toggleCalc}
