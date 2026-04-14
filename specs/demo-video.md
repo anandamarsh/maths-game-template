@@ -47,6 +47,19 @@ Other games should copy this pattern exactly:
 A video camera button in the dev toolbar (next to the existing screenshot camera button).
 Visible only in localhost dev mode, same as the screenshot button.
 
+### Screenshot tools
+
+- localhost dev only
+- the existing camera button still downloads the full scene as a PNG
+- a second button appears beside it with a dotted square camera icon
+- pressing that button toggles a square snip overlay on top of the scene
+- the overlay starts centred, can be dragged, and can be resized while staying a
+  square
+- a floating camera button on the selection’s top-left corner downloads exactly
+  the selected square crop as a PNG
+- a close button on the selection’s top-right corner, or pressing `Escape`,
+  closes the snip tool
+
 ### 2. Tab capture permission
 
 Immediately after the record button is pressed, the app switches the visible scene to

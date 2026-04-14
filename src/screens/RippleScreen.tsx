@@ -10,6 +10,7 @@ import { useDemoRecorder } from "../hooks/useDemoRecorder";
 import {
   fadeOutRecordingSoundtrack,
   isMuted,
+  playCameraShutter,
   playCorrect,
   playLevelComplete,
   playRipple,
@@ -43,6 +44,20 @@ const AUTOPILOT_EMAIL = "amarsh.anand@gmail.com";
 const DEMO_RECORDING_EMAIL = "teacher@myschool.com";
 const IS_LOCALHOST_DEV = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
+type SnipSelection = {
+  x: number;
+  y: number;
+  size: number;
+};
+
+type SnipDragState = {
+  mode: "move" | "resize";
+  pointerId: number;
+  startX: number;
+  startY: number;
+  initial: SnipSelection;
+};
+
 type GamePhase = "tapping" | "answering" | "feedback" | "levelComplete";
 
 export default function RippleScreen() {
@@ -67,6 +82,9 @@ export default function RippleScreen() {
   const [questionShake, setQuestionShake] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
+  const [snipMode, setSnipMode] = useState(false);
+  const [snipSelection, setSnipSelection] = useState<SnipSelection | null>(null);
+  const [captureFlashVisible, setCaptureFlashVisible] = useState(false);
 
   // Track ripple positions for current round (for the report diagram)
   const roundRipplesRef = useRef<RipplePosition[]>([]);
@@ -75,6 +93,8 @@ export default function RippleScreen() {
 
   const rippleIdRef = useRef(0);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const snipDragRef = useRef<SnipDragState | null>(null);
+  const captureFlashTimerRef = useRef<number | null>(null);
   const musicStartedRef = useRef(false);
   const roundRef = useRef(makeRound(1));
 
@@ -460,11 +480,33 @@ export default function RippleScreen() {
   async function handleCaptureScene() {
     if (!IS_LOCALHOST_DEV || !canvasRef.current) return;
     try {
-      const canvas = await html2canvas(canvasRef.current, { scale: 2, useCORS: true, backgroundColor: null });
+      const canvas = await renderSceneCanvas(2);
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
       const fileName = `ripple-scene-${stamp}.png`;
+      await downloadCanvasPng(canvas, fileName);
+    } catch (err) {
+      console.error("Capture failed", err);
+    }
+  }
+
+  async function renderSceneCanvas(scale: number) {
+    if (!canvasRef.current) {
+      throw new Error("Canvas unavailable");
+    }
+    return await html2canvas(canvasRef.current, {
+      scale,
+      useCORS: true,
+      backgroundColor: null,
+    });
+  }
+
+  async function downloadCanvasPng(canvas: HTMLCanvasElement, fileName: string) {
+    await new Promise<void>((resolve, reject) => {
       canvas.toBlob((blob) => {
-        if (!blob) return;
+        if (!blob) {
+          reject(new Error("Unable to encode PNG"));
+          return;
+        }
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -473,9 +515,83 @@ export default function RippleScreen() {
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
+        resolve();
       }, "image/png");
+    });
+  }
+
+  function makeDefaultSnipSelection() {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const size = Math.max(96, Math.min(Math.min(rect.width, rect.height) * 0.48, 220));
+    return {
+      x: (rect.width - size) / 2,
+      y: (rect.height - size) / 2,
+      size,
+    } satisfies SnipSelection;
+  }
+
+  function clampSnipSelection(next: SnipSelection) {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return next;
+    const maxSize = Math.max(72, Math.min(rect.width, rect.height));
+    const size = Math.max(72, Math.min(next.size, maxSize));
+    return {
+      x: Math.min(Math.max(0, next.x), rect.width - size),
+      y: Math.min(Math.max(0, next.y), rect.height - size),
+      size,
+    };
+  }
+
+  function toggleSnipMode() {
+    if (!IS_LOCALHOST_DEV) return;
+    setSnipMode((active) => !active);
+  }
+
+  function closeSnipMode() {
+    snipDragRef.current = null;
+    setSnipMode(false);
+  }
+
+  function triggerCaptureFlash() {
+    playCameraShutter();
+    setCaptureFlashVisible(true);
+    if (captureFlashTimerRef.current) clearTimeout(captureFlashTimerRef.current);
+    captureFlashTimerRef.current = window.setTimeout(() => setCaptureFlashVisible(false), 180);
+  }
+
+  async function handleCaptureSnip() {
+    if (!IS_LOCALHOST_DEV || !snipSelection) return;
+    try {
+      triggerCaptureFlash();
+      const sourceCanvas = await renderSceneCanvas(4);
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) throw new Error("Canvas bounds unavailable");
+
+      const sourceX = (snipSelection.x / rect.width) * sourceCanvas.width;
+      const sourceY = (snipSelection.y / rect.height) * sourceCanvas.height;
+      const sourceSize = (snipSelection.size / rect.width) * sourceCanvas.width;
+      const cropped = document.createElement("canvas");
+      cropped.width = Math.max(1, Math.round(sourceSize));
+      cropped.height = cropped.width;
+      const ctx = cropped.getContext("2d");
+      if (!ctx) throw new Error("Canvas context unavailable");
+      ctx.drawImage(
+        sourceCanvas,
+        sourceX,
+        sourceY,
+        sourceSize,
+        sourceSize,
+        0,
+        0,
+        cropped.width,
+        cropped.height,
+      );
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      await downloadCanvasPng(cropped, `ripple-square-snip-${stamp}.png`);
+      closeSnipMode();
     } catch (err) {
-      console.error("Capture failed", err);
+      console.error("Square snip failed", err);
     }
   }
 
@@ -504,6 +620,70 @@ export default function RippleScreen() {
     return () => document.removeEventListener("touchmove", prevent);
   }, []);
 
+  useEffect(() => {
+    if (!snipMode) {
+      snipDragRef.current = null;
+      return;
+    }
+    if (!snipSelection) {
+      const initial = makeDefaultSnipSelection();
+      if (initial) {
+        setSnipSelection(initial);
+      }
+    }
+
+    function onMove(e: PointerEvent) {
+      const drag = snipDragRef.current;
+      if (!drag) return;
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      if (drag.mode === "move") {
+        setSnipSelection(clampSnipSelection({
+          ...drag.initial,
+          x: drag.initial.x + dx,
+          y: drag.initial.y + dy,
+        }));
+        return;
+      }
+      const delta = Math.max(dx, dy);
+      setSnipSelection(clampSnipSelection({
+        ...drag.initial,
+        size: drag.initial.size + delta,
+      }));
+    }
+
+    function onUp(e: PointerEvent) {
+      if (snipDragRef.current?.pointerId !== e.pointerId) return;
+      snipDragRef.current = null;
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      closeSnipMode();
+    }
+
+    function onResize() {
+      setSnipSelection((current) => {
+        if (!current) return makeDefaultSnipSelection();
+        return clampSnipSelection(current);
+      });
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [snipMode, snipSelection]);
+
   // ── Question text ────────────────────────────────────────────────────────
 
   let questionText: string;
@@ -530,6 +710,8 @@ export default function RippleScreen() {
         onToggleMute={handleToggleMute}
         onRestart={handleRestart}
         onCapture={IS_LOCALHOST_DEV ? handleCaptureScene : undefined}
+        onToggleSquareSnip={IS_LOCALHOST_DEV ? toggleSnipMode : undefined}
+        squareSnipActive={snipMode}
         onRecordDemo={IS_LOCALHOST_DEV ? startRecording : undefined}
         isRecordingDemo={isRecording}
         keypadValue={calcValue}
@@ -616,6 +798,83 @@ export default function RippleScreen() {
           <TutorialHint show={showTutorial && !isAutopilot} label={t("game.tapAnywhere")} />
         </div>
 
+        {IS_LOCALHOST_DEV && snipMode && snipSelection && (
+          <div className="pointer-events-auto absolute inset-0 z-[82]">
+            <div className="absolute inset-0 bg-black/10" />
+            <div
+              className="absolute rounded-2xl"
+              style={{
+                left: snipSelection.x,
+                top: snipSelection.y,
+                width: snipSelection.size,
+                height: snipSelection.size,
+                border: "2px dashed rgba(255,255,255,0.95)",
+                boxShadow: "0 0 0 9999px rgba(2,6,23,0.22)",
+                background: "rgba(255,255,255,0.03)",
+              }}
+            >
+              <button
+                type="button"
+                title="Capture square snip"
+                onClick={handleCaptureSnip}
+                className="arcade-button absolute -left-3 -top-3 z-[2] h-10 w-10 p-1.5"
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="h-full w-full">
+                  <path d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="12" cy="12.5" r="3.25" stroke="white" strokeWidth="2" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                aria-label="Close square snip"
+                title="Close square snip"
+                onClick={closeSnipMode}
+                className="arcade-button absolute -right-3 -top-3 z-[2] flex h-10 w-10 items-center justify-center p-1.5"
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="h-full w-full" stroke="white" strokeWidth="2.4" strokeLinecap="round">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                aria-label="Move square snip"
+                title="Drag to move"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  snipDragRef.current = {
+                    mode: "move",
+                    pointerId: e.pointerId,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    initial: snipSelection,
+                  };
+                }}
+                className="absolute inset-0 cursor-move rounded-2xl"
+                style={{ background: "transparent" }}
+              />
+              <button
+                type="button"
+                aria-label="Resize square snip"
+                title="Drag to resize"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  snipDragRef.current = {
+                    mode: "resize",
+                    pointerId: e.pointerId,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    initial: snipSelection,
+                  };
+                }}
+                className="absolute -bottom-3 -right-3 z-[2] h-7 w-7 rounded-full border-2 border-white bg-sky-400/90"
+                style={{ boxShadow: "0 0 18px rgba(56,189,248,0.45)" }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Session report modal */}
         {sessionSummary && (
           <SessionReportModal
@@ -677,6 +936,17 @@ export default function RippleScreen() {
             background: "#ef4444",
             boxShadow: "0 0 8px rgba(239,68,68,0.7)",
             animation: "autopilot-blink 1.5s ease-in-out infinite",
+          }}
+        />
+      )}
+
+      {captureFlashVisible && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-[120]"
+          style={{
+            background:
+              "radial-gradient(circle at center, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.7) 22%, rgba(255,255,255,0.18) 52%, rgba(255,255,255,0) 78%)",
           }}
         />
       )}

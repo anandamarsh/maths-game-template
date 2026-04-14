@@ -295,8 +295,14 @@ useEffect(() => {
 
 ## Scene capture (dev only)
 
-Shown only when `IS_LOCALHOST_DEV && onCapture` prop is provided.
-Uses `html2canvas` to capture the canvas div at 2× scale and download as PNG.
+Shown only when `IS_LOCALHOST_DEV` is active.
+
+- the existing camera button captures the full scene via `html2canvas` at 2× scale
+- a second dotted-square camera button toggles a square snip overlay
+- the snip selector starts centred, can be dragged, and can be resized while
+  staying square
+- a floating camera button on the selector captures exactly that square crop
+- capture plays a shutter-style click, flashes briefly, and closes the snip tool
 
 ---
 

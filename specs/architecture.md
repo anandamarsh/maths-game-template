@@ -236,4 +236,6 @@ const AUTOPILOT_EMAIL = "your@email.com"  // email autopilot fills in
 const IS_LOCALHOST_DEV = window.location.hostname === "localhost" || ...
 ```
 
-`IS_LOCALHOST_DEV` enables the dev-only screenshot capture button.
+`IS_LOCALHOST_DEV` enables the dev-only screenshot capture tools:
+- the existing full-scene camera button
+- a square snip button that opens a draggable/resizable square crop overlay
