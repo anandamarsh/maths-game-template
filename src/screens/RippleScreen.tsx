@@ -69,6 +69,10 @@ export default function RippleScreen() {
   const [showTutorial, setShowTutorial] = useState(true);
   const [level, setLevel] = useState<1 | 2>(1);
   const [unlockedLevel, setUnlockedLevel] = useState(1);
+  const levelLifecycleRef = useRef<{
+    level: 1 | 2;
+    finished: boolean;
+  } | null>(null);
 
   // Game state
   const [phase, setPhase] = useState<GamePhase>("tapping");
@@ -111,6 +115,45 @@ export default function RippleScreen() {
   // Always-current refs for cheat code and autopilot callbacks
   const targetTapsRef = useRef(targetTaps);
   targetTapsRef.current = targetTaps;
+
+  const finishTrackedLevel = useCallback(
+    (endReason: string, payload: Record<string, unknown> = {}) => {
+      const current = levelLifecycleRef.current;
+      if (!current || current.finished) {
+        return;
+      }
+
+      current.finished = true;
+      sendEmbeddedAnalyticsEvent("level_finished", {
+        level: current.level,
+        endReason,
+        ...payload,
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    levelLifecycleRef.current = {
+      level,
+      finished: false,
+    };
+    sendEmbeddedAnalyticsEvent("level_started", { level });
+
+    return () => {
+      finishTrackedLevel("shell-exit");
+    };
+  }, [finishTrackedLevel, level]);
+
+  useEffect(() => {
+    if (phase !== "levelComplete") {
+      return;
+    }
+
+    finishTrackedLevel(level >= LEVEL_COUNT ? "game-complete" : "level-complete", {
+      phase,
+    });
+  }, [finishTrackedLevel, level, phase]);
 
   function ensureMusic() {
     if (!musicStartedRef.current) {
